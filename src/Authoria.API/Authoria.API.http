@@ -1,0 +1,6 @@
+@Authoria.API_HostAddress = http://localhost:5296
+
+GET {{Authoria.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
