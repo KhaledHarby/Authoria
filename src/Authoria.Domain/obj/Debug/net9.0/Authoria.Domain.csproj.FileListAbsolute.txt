@@ -1,0 +1,12 @@
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\bin\Debug\net9.0\Authoria.Domain.deps.json
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\bin\Debug\net9.0\Authoria.Domain.dll
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\bin\Debug\net9.0\Authoria.Domain.pdb
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.AssemblyInfoInputs.cache
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.AssemblyInfo.cs
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.csproj.CoreCompileInputs.cache
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.sourcelink.json
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.dll
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\refint\Authoria.Domain.dll
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\Authoria.Domain.pdb
+D:\NewTFS\Authoria\Authoria\src\Authoria.Domain\obj\Debug\net9.0\ref\Authoria.Domain.dll

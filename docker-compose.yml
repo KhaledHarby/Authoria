@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__SqlServer=Server=sqlserver;Database=Authoria;User Id=sa;Password=Your_password123;TrustServerCertificate=True
+      - Jwt__Issuer=Authoria
+      - Jwt__Audience=AuthoriaClients
+      - Jwt__Secret=CHANGE_ME_LONG_RANDOM
+    depends_on:
+      - sqlserver
+      - redis
+    ports:
+      - "5000:8080"
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    environment:
+      - VITE_API_BASE=http://localhost:5000
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+
+
