@@ -72,3 +72,5 @@ D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\obj\Debug\net9.0\refint\Authoria.S
 D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\obj\Debug\net9.0\Authoria.Seed.pdb
 D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\obj\Debug\net9.0\Authoria.Seed.genruntimeconfig.cache
 D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\obj\Debug\net9.0\ref\Authoria.Seed.dll
+D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\bin\Debug\net9.0\Microsoft.AspNetCore.Authorization.dll
+D:\NewTFS\Authoria\Authoria\src\Authoria.Seed\bin\Debug\net9.0\Microsoft.AspNetCore.Metadata.dll

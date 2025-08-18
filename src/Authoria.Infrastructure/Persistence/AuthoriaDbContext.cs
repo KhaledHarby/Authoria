@@ -18,6 +18,7 @@ public class AuthoriaDbContext : DbContext
 	public DbSet<LocalizationLabel> LocalizationLabels => Set<LocalizationLabel>();
 	public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
 	public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+	public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -85,6 +86,12 @@ public class AuthoriaDbContext : DbContext
 		modelBuilder.Entity<WebhookDelivery>(b =>
 		{
 			b.HasIndex(x => new { x.SubscriptionId, x.EventId });
+		});
+
+		modelBuilder.Entity<RefreshToken>(b =>
+		{
+			b.HasIndex(x => new { x.UserId, x.Token }).IsUnique();
+			b.Property(x => x.Token).HasMaxLength(512).IsRequired();
 		});
 	}
 }
