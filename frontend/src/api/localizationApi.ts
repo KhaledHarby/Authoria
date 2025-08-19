@@ -1,13 +1,10 @@
 import http from './http';
-import {
+import type {
   LocalizationLabel,
   CreateLocalizationLabelRequest,
   UpdateLocalizationLabelRequest,
-  LocalizationSearchRequest,
   ImportTranslationsRequest,
   ExportTranslationsResponse,
-  LanguageInfo,
-  TranslationValidationResult,
   LocalizationAnalytics,
   PaginationRequest,
   PaginationResponse

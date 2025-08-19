@@ -28,8 +28,15 @@ import {
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
   Settings as SettingsIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from '../app/store';
+import { setLanguage, setDarkMode } from '../features/settings/settingsSlice';
+import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 const drawerWidth = 280;
 
@@ -37,22 +44,25 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Users', icon: <PeopleIcon />, path: '/users' },
-  { text: 'Roles', icon: <SecurityIcon />, path: '/roles' },
-  { text: 'Permissions', icon: <SecurityIcon />, path: '/permissions' },
-  { text: 'Localization', icon: <LanguageIcon />, path: '/localization' },
-  { text: 'Audit Logs', icon: <HistoryIcon />, path: '/audit' },
-  { text: 'Webhooks', icon: <SecurityIcon />, path: '/webhooks' },
-];
-
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const dispatch = useDispatch();
+  const { t } = useTranslation();
+  const { isRTL, darkMode } = useSelector((state: RootState) => state.settings);
+
+  const menuItems = [
+    { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
+    { text: t('navigation.users'), icon: <PeopleIcon />, path: '/users' },
+    { text: t('navigation.roles'), icon: <SecurityIcon />, path: '/roles' },
+    { text: t('navigation.permissions'), icon: <SecurityIcon />, path: '/permissions' },
+    { text: t('navigation.localization'), icon: <LanguageIcon />, path: '/localization' },
+    { text: t('navigation.audit'), icon: <HistoryIcon />, path: '/audit' },
+    { text: t('navigation.settings'), icon: <SettingsIcon />, path: '/settings' },
+  ];
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -71,6 +81,14 @@ export default function Layout({ children }: LayoutProps) {
     navigate('/');
     handleProfileMenuClose();
   };
+
+  const handleToggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    dispatch(setDarkMode(newDarkMode));
+    localStorage.setItem('authoria-dark-mode', newDarkMode.toString());
+  };
+
+
 
   const drawer = (
     <Box>
@@ -161,7 +179,9 @@ export default function Layout({ children }: LayoutProps) {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ 
+      display: 'flex',
+    }}>
       <AppBar
         position="fixed"
         sx={{
@@ -183,8 +203,21 @@ export default function Layout({ children }: LayoutProps) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find(item => item.path === location.pathname)?.text || t('navigation.dashboard')}
           </Typography>
+          
+          {/* Dark Mode Toggle */}
+          <IconButton
+            onClick={handleToggleDarkMode}
+            color="inherit"
+            sx={{ mr: 1 }}
+          >
+            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+          </IconButton>
+          
+          {/* Language Selector */}
+          <LanguageSelector />
+          
           <IconButton
             onClick={handleProfileMenuOpen}
             sx={{ ml: 2 }}
@@ -211,6 +244,7 @@ export default function Layout({ children }: LayoutProps) {
               </ListItemIcon>
               Profile
             </MenuItem>
+
             <MenuItem onClick={handleProfileMenuClose}>
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
@@ -229,7 +263,10 @@ export default function Layout({ children }: LayoutProps) {
       </AppBar>
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ 
+          width: { sm: drawerWidth }, 
+          flexShrink: { sm: 0 },
+        }}
       >
         <Drawer
           variant="temporary"

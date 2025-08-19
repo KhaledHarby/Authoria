@@ -1,0 +1,305 @@
+/* RTL Support Styles */
+
+/* Ensure proper text direction for RTL */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Dark mode styles */
+.dark-mode {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiPaper-root {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiAppBar-root {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiDrawer-paper {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiCard-root {
+  background-color: #334155 !important;
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiTextField-root .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: #475569 !important;
+}
+
+.dark-mode .MuiTextField-root .MuiInputLabel-root {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .MuiFormControlLabel-root .MuiFormControlLabel-label {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiSelect-root {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiMenuItem-root {
+  color: #f1f5f9 !important;
+}
+
+.dark-mode .MuiMenuItem-root:hover {
+  background-color: #475569 !important;
+}
+
+/* RTL-specific adjustments for common elements */
+[dir="rtl"] .MuiDrawer-paper {
+  border-right: none !important;
+  border-left: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+/* RTL layout adjustments */
+[dir="rtl"] .MuiBox-root {
+  direction: rtl;
+}
+
+[dir="rtl"] .MuiAppBar-root {
+  margin-left: 0 !important;
+  margin-right: 280px !important;
+}
+
+[dir="rtl"] .MuiDrawer-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for form elements */
+[dir="rtl"] .MuiInputBase-input {
+  text-align: right;
+}
+
+[dir="rtl"] .MuiFormLabel-root {
+  text-align: right;
+}
+
+/* RTL adjustments for tables */
+[dir="rtl"] .MuiTableCell-root {
+  text-align: right;
+}
+
+/* RTL adjustments for buttons and icons */
+[dir="rtl"] .MuiButton-startIcon {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+[dir="rtl"] .MuiButton-endIcon {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+/* RTL adjustments for lists */
+[dir="rtl"] .MuiListItemIcon-root {
+  margin-right: 0;
+  margin-left: 16px;
+}
+
+/* RTL adjustments for chips */
+[dir="rtl"] .MuiChip-label {
+  text-align: right;
+}
+
+/* RTL adjustments for tooltips */
+[dir="rtl"] .MuiTooltip-tooltip {
+  text-align: right;
+}
+
+/* RTL adjustments for menus */
+[dir="rtl"] .MuiMenu-paper {
+  text-align: right;
+}
+
+/* RTL adjustments for dialogs */
+[dir="rtl"] .MuiDialog-paper {
+  text-align: right;
+}
+
+/* RTL adjustments for cards */
+[dir="rtl"] .MuiCardContent-root {
+  text-align: right;
+}
+
+/* RTL adjustments for pagination */
+[dir="rtl"] .MuiPagination-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for search bars */
+[dir="rtl"] .MuiInputBase-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for select dropdowns */
+[dir="rtl"] .MuiSelect-select {
+  text-align: right;
+}
+
+/* RTL adjustments for checkboxes and radio buttons */
+[dir="rtl"] .MuiFormControlLabel-root {
+  flex-direction: row-reverse;
+}
+
+/* RTL adjustments for tabs */
+[dir="rtl"] .MuiTabs-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for stepper */
+[dir="rtl"] .MuiStepper-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for breadcrumbs */
+[dir="rtl"] .MuiBreadcrumbs-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for accordion */
+[dir="rtl"] .MuiAccordionSummary-root {
+  flex-direction: row-reverse;
+}
+
+/* RTL adjustments for switch */
+[dir="rtl"] .MuiSwitch-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for slider */
+[dir="rtl"] .MuiSlider-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for rating */
+[dir="rtl"] .MuiRating-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for autocomplete */
+[dir="rtl"] .MuiAutocomplete-input {
+  text-align: right;
+}
+
+/* RTL adjustments for date picker */
+[dir="rtl"] .MuiDatePicker-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for time picker */
+[dir="rtl"] .MuiTimePicker-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for data grid */
+[dir="rtl"] .MuiDataGrid-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for tree view */
+[dir="rtl"] .MuiTreeView-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for timeline */
+[dir="rtl"] .MuiTimeline-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for speed dial */
+[dir="rtl"] .MuiSpeedDial-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for bottom navigation */
+[dir="rtl"] .MuiBottomNavigation-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for mobile stepper */
+[dir="rtl"] .MuiMobileStepper-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for skeleton */
+[dir="rtl"] .MuiSkeleton-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for alert */
+[dir="rtl"] .MuiAlert-root {
+  text-align: right;
+}
+
+/* RTL adjustments for snackbar */
+[dir="rtl"] .MuiSnackbar-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for progress */
+[dir="rtl"] .MuiLinearProgress-root {
+  direction: rtl;
+}
+
+[dir="rtl"] .MuiCircularProgress-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for badge */
+[dir="rtl"] .MuiBadge-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for avatar */
+[dir="rtl"] .MuiAvatar-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for divider */
+[dir="rtl"] .MuiDivider-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for paper */
+[dir="rtl"] .MuiPaper-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for container */
+[dir="rtl"] .MuiContainer-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for grid */
+[dir="rtl"] .MuiGrid-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for stack */
+[dir="rtl"] .MuiStack-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for box */
+[dir="rtl"] .MuiBox-root {
+  direction: rtl;
+}
+
+/* RTL adjustments for typography */
+[dir="rtl"] .MuiTypography-root {
+  direction: rtl;
+}

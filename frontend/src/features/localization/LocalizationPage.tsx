@@ -45,9 +45,12 @@ import Pagination from '../../ui/Pagination';
 import SearchBar from '../../ui/SearchBar';
 import { localizationApi } from '../../api/localizationApi';
 import type { LocalizationLabel, LocalizationAnalytics, PaginationRequest } from '../../types/localization';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 
 export default function LocalizationPage() {
   const theme = useTheme();
+  const { tenantId } = useSelector((state: RootState) => state.auth);
   
   // State management
   const [translations, setTranslations] = useState<LocalizationLabel[]>([]);
@@ -189,12 +192,16 @@ export default function LocalizationPage() {
 
     try {
       if (dialogType === 'create') {
-        await localizationApi.create(formData);
+        await localizationApi.create({
+          ...formData,
+          tenantId: tenantId || undefined
+        });
         setSuccess('Translation created successfully!');
       } else if (selectedTranslation) {
         await localizationApi.update(selectedTranslation.id, {
           id: selectedTranslation.id,
-          ...formData
+          ...formData,
+          tenantId: tenantId || undefined
         });
         setSuccess('Translation updated successfully!');
       }

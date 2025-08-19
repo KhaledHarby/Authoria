@@ -1,6 +1,7 @@
 using Authoria.Application.Localization;
 using Authoria.Application.Common;
 using Authoria.Domain.Entities;
+using Authoria.Application.Abstractions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace Authoria.API.Controllers;
 public class LocalizationController : ControllerBase
 {
 	private readonly ILocalizationService _loc;
+	private readonly ICurrentUserContext _currentUser;
 	
-	public LocalizationController(ILocalizationService loc) 
+	public LocalizationController(ILocalizationService loc, ICurrentUserContext currentUser) 
 	{ 
 		_loc = loc; 
+		_currentUser = currentUser;
 	}
 
 	[HttpGet]
@@ -42,7 +45,7 @@ public class LocalizationController : ControllerBase
 			Key = request.Key,
 			Language = request.Language,
 			Value = request.Value,
-			TenantId = request.TenantId
+			TenantId = request.TenantId ?? _currentUser.TenantId
 		};
 		
 		var result = await _loc.UpsertAsync(label);
@@ -60,7 +63,7 @@ public class LocalizationController : ControllerBase
 			Key = request.Key,
 			Language = request.Language,
 			Value = request.Value,
-			TenantId = request.TenantId
+			TenantId = request.TenantId ?? _currentUser.TenantId
 		};
 		
 		var result = await _loc.UpsertAsync(label);
@@ -84,17 +87,29 @@ public class LocalizationController : ControllerBase
 		=> Ok(await _loc.GetSupportedLanguagesAsync());
 
 	[HttpGet("languages/{language}/translations")]
+	[AllowAnonymous]
 	public async Task<IActionResult> GetTranslationsForLanguage(string language)
 		=> Ok(await _loc.GetTranslationsForLanguageAsync(language));
 
 	[HttpPost("bulk")]
 	public async Task<IActionResult> BulkUpsert([FromBody] List<LocalizationLabel> labels)
-		=> Ok(await _loc.BulkUpsertAsync(labels));
+	{
+		// Set tenant ID for all labels if not provided
+		foreach (var label in labels)
+		{
+			if (label.TenantId == null)
+			{
+				label.TenantId = _currentUser.TenantId;
+			}
+		}
+		
+		return Ok(await _loc.BulkUpsertAsync(labels));
+	}
 
 	[HttpPost("import")]
 	public async Task<IActionResult> Import([FromBody] ImportTranslationsRequest request)
 	{
-		var success = await _loc.ImportFromJsonAsync(request.Language, request.Translations);
+		var success = await _loc.ImportFromJsonAsync(request.Language, request.Translations, _currentUser.TenantId);
 		return Ok(new { success });
 	}
 

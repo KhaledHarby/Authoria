@@ -9,6 +9,7 @@ import PermissionsPage from '../features/permissions/PermissionsPage';
 import LocalizationPage from '../features/localization/LocalizationPage';
 import AuditPage from '../features/audit/AuditPage';
 import WebhooksPage from '../features/webhooks/WebhooksPage';
+import SettingsPage from '../features/settings/SettingsPage';
 
 const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
   { path: '/localization', element: <LocalizationPage /> },
   { path: '/audit', element: <AuditPage /> },
   { path: '/webhooks', element: <WebhooksPage /> },
+  { path: '/settings', element: <SettingsPage /> },
 ]);
 
 export default function AppRoutes() {

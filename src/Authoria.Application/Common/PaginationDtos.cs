@@ -7,6 +7,9 @@ public class PaginationRequest
     public string? SearchTerm { get; set; }
     public string? SortBy { get; set; }
     public string? SortDirection { get; set; } = "asc";
+    public string? ActionType { get; set; }
+    public string? Status { get; set; }
+    public string? TimeRange { get; set; }
 }
 
 public class PaginationResponse<T>

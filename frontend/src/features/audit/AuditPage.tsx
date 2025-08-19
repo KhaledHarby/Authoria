@@ -16,7 +16,6 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  Grid,
   Button,
   Dialog,
   DialogTitle,
@@ -30,7 +29,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Info as InfoIcon,
@@ -42,17 +43,17 @@ import {
   Download as DownloadIcon,
   Visibility as VisibilityIcon,
   Timeline as TimelineIcon,
-  TrendingUp as TrendingUpIcon,
-  Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import http from '../../api/http';
 import Pagination from '../../ui/Pagination';
-import SearchBar from '../../ui/SearchBar';
 import Layout from '../../ui/Layout';
 
 interface AuditLog {
@@ -99,6 +100,7 @@ const AuditPage: React.FC = () => {
   const [actionFilter, setActionFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [timeFilter, setTimeFilter] = useState('24h');
+  const [showFilters, setShowFilters] = useState(false);
   const theme = useTheme();
 
   const loadAuditLogs = async (isRefresh = false) => {
@@ -114,9 +116,9 @@ const AuditPage: React.FC = () => {
         page: currentPage.toString(),
         pageSize: pageSize.toString(),
         ...(searchTerm && { searchTerm }),
-        ...(actionFilter && { actionFilter }),
-        ...(statusFilter && { statusFilter }),
-        ...(timeFilter && { timeFilter })
+        ...(actionFilter && { actionType: actionFilter }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(timeFilter && { timeRange: timeFilter })
       });
 
       const response = await http.get<PaginationResponse<AuditLog>>(`/api/audit?${params}`);
@@ -135,6 +137,14 @@ const AuditPage: React.FC = () => {
 
   const handleRefresh = () => {
     loadAuditLogs(true);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setActionFilter('');
+    setStatusFilter('');
+    setTimeFilter('24h');
+    setCurrentPage(1);
   };
 
   const handleRowToggle = (logId: string) => {
@@ -191,19 +201,19 @@ const AuditPage: React.FC = () => {
   };
 
   const getActionIcon = (action: string) => {
-    if (action.includes('auth.')) return <SecurityIcon fontSize="small" />;
-    if (action.includes('user.')) return <PersonIcon fontSize="small" />;
-    if (action.includes('api.')) return <ApiIcon fontSize="small" />;
-    if (action.includes('db.')) return <StorageIcon fontSize="small" />;
+    if (action.includes('auth.') || action.includes('login') || action.includes('logout')) return <SecurityIcon fontSize="small" />;
+    if (action.includes('user.') || action.includes('user')) return <PersonIcon fontSize="small" />;
+    if (action.includes('api.') || ['GET', 'POST', 'PUT', 'DELETE'].includes(action.toUpperCase())) return <ApiIcon fontSize="small" />;
+    if (action.includes('db.') || action.includes('database')) return <StorageIcon fontSize="small" />;
     return <InfoIcon fontSize="small" />;
   };
 
   const getActionColor = (action: string): 'success' | 'error' | 'warning' | 'primary' | 'default' => {
-    if (action.includes('login.success')) return 'success';
-    if (action.includes('login.failed')) return 'error';
-    if (action.includes('create')) return 'primary';
-    if (action.includes('update')) return 'warning';
-    if (action.includes('delete')) return 'error';
+    if (action.includes('login.success') || action.includes('success')) return 'success';
+    if (action.includes('login.failed') || action.includes('failed') || action.includes('error')) return 'error';
+    if (action.includes('create') || action.includes('add')) return 'primary';
+    if (action.includes('update') || action.includes('edit') || action.includes('modify')) return 'warning';
+    if (action.includes('delete') || action.includes('remove')) return 'error';
     return 'default';
   };
 
@@ -237,7 +247,7 @@ const AuditPage: React.FC = () => {
       log.action.includes('error')
     ).length;
     
-    const avgDuration = auditLogs.reduce((sum, log) => sum + (log.durationMs || 0), 0) / auditLogs.length;
+    const avgDuration = auditLogs.length > 0 ? auditLogs.reduce((sum, log) => sum + (log.durationMs || 0), 0) / auditLogs.length : 0;
     
     const uniqueUsers = new Set(auditLogs.map(log => log.actorUserId).filter(Boolean)).size;
     
@@ -260,24 +270,9 @@ const AuditPage: React.FC = () => {
     return new Date(dateString).toLocaleString();
   };
 
-  const getDetailsSummary = (detailsJson?: string) => {
-    if (!detailsJson) return '-';
-    try {
-      const details = JSON.parse(detailsJson);
-      if (typeof details === 'object') {
-        const keys = Object.keys(details);
-        if (keys.length <= 3) {
-          return keys.map(key => `${key}: ${details[key]}`).join(', ');
-        }
-        return `${keys.length} fields`;
-      }
-      return details.toString();
-    } catch {
-      return detailsJson.substring(0, 50) + (detailsJson.length > 50 ? '...' : '');
-    }
-  };
-
   const analytics = getAnalytics();
+
+  const hasActiveFilters = searchTerm || actionFilter || statusFilter || timeFilter !== '24h';
 
   if (loading && auditLogs.length === 0) {
     return (
@@ -362,115 +357,160 @@ const AuditPage: React.FC = () => {
         )}
 
         {/* Analytics Cards */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              height: '100%'
-            }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <TimelineIcon />
-                  <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
-                    Total Events
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                  {totalCount.toLocaleString()}
+        <Box 
+          sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' },
+            gap: 3,
+            mb: 3 
+          }}
+        >
+          <Card sx={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            height: '100%'
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <TimelineIcon />
+                <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
+                  Total Events
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  Current page: {analytics.totalLogs}
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                {totalCount.toLocaleString()}
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                Current page: {analytics.totalLogs}
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <CheckCircleIcon color="success" />
+                <Typography variant="subtitle2" color="text.secondary">
+                  Successful
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <CheckCircleIcon color="success" />
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Successful
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                  {analytics.successfulActions}
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                {analytics.successfulActions}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {analytics.totalLogs > 0 ? Math.round((analytics.successfulActions / analytics.totalLogs) * 100) : 0}% success rate
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <ErrorIcon color="error" />
+                <Typography variant="subtitle2" color="text.secondary">
+                  Failed
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {analytics.totalLogs > 0 ? Math.round((analytics.successfulActions / analytics.totalLogs) * 100) : 0}% success rate
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'error.main' }}>
+                {analytics.failedActions}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {analytics.totalLogs > 0 ? Math.round((analytics.failedActions / analytics.totalLogs) * 100) : 0}% failure rate
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <ScheduleIcon color="primary" />
+                <Typography variant="subtitle2" color="text.secondary">
+                  Avg Duration
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <ErrorIcon color="error" />
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Failed
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'error.main' }}>
-                  {analytics.failedActions}
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                {analytics.avgDuration}ms
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Response time
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <PersonIcon color="info" />
+                <Typography variant="subtitle2" color="text.secondary">
+                  Active Users
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {analytics.totalLogs > 0 ? Math.round((analytics.failedActions / analytics.totalLogs) * 100) : 0}% failure rate
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <ScheduleIcon color="primary" />
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Avg Duration
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  {analytics.avgDuration}ms
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Response time
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <PersonIcon color="info" />
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Active Users
-                  </Typography>
-                </Box>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
-                  {analytics.uniqueUsers}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Unique actors
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
+                {analytics.uniqueUsers}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Unique actors
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
 
-        {/* Filters and Search */}
+        {/* Search and Filters */}
         <Paper sx={{ p: 3, mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <SearchBar
-                value={searchTerm}
-                onChange={handleSearchChange}
-                placeholder="Search audit logs by action, resource, IP, or path..."
-                loading={refreshing}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4} md={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField
+              fullWidth
+              placeholder="Search audit logs by action, resource, IP, or path..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => handleSearchChange('')}>
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              size="small"
+            />
+            <Button
+              variant={showFilters ? "contained" : "outlined"}
+              startIcon={<FilterIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              sx={{ minWidth: 120 }}
+            >
+              Filters
+            </Button>
+            {hasActiveFilters && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                size="small"
+              >
+                Clear All
+              </Button>
+            )}
+          </Box>
+
+          {/* Advanced Filters */}
+          <Collapse in={showFilters}>
+            <Box 
+              sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                gap: 2,
+                pt: 2,
+                borderTop: `1px solid ${theme.palette.divider}`
+              }}
+            >
               <FormControl fullWidth size="small">
                 <InputLabel>Action Type</InputLabel>
                 <Select
@@ -483,10 +523,12 @@ const AuditPage: React.FC = () => {
                   <MenuItem value="user">User Management</MenuItem>
                   <MenuItem value="api">API Calls</MenuItem>
                   <MenuItem value="db">Database</MenuItem>
+                  <MenuItem value="create">Create Operations</MenuItem>
+                  <MenuItem value="update">Update Operations</MenuItem>
+                  <MenuItem value="delete">Delete Operations</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4} md={2}>
+              
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -499,10 +541,10 @@ const AuditPage: React.FC = () => {
                   <MenuItem value="redirect">Redirect (3xx)</MenuItem>
                   <MenuItem value="client-error">Client Error (4xx)</MenuItem>
                   <MenuItem value="server-error">Server Error (5xx)</MenuItem>
+                  <MenuItem value="error">All Errors (4xx, 5xx)</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4} md={2}>
+              
               <FormControl fullWidth size="small">
                 <InputLabel>Time Range</InputLabel>
                 <Select
@@ -514,11 +556,13 @@ const AuditPage: React.FC = () => {
                   <MenuItem value="24h">Last 24 Hours</MenuItem>
                   <MenuItem value="7d">Last 7 Days</MenuItem>
                   <MenuItem value="30d">Last 30 Days</MenuItem>
+                  <MenuItem value="90d">Last 90 Days</MenuItem>
+                  <MenuItem value="1y">Last Year</MenuItem>
                   <MenuItem value="all">All Time</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-          </Grid>
+            </Box>
+          </Collapse>
         </Paper>
 
         {/* Audit Logs Table */}
@@ -558,8 +602,20 @@ const AuditPage: React.FC = () => {
                           No audit logs found
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Try adjusting your search criteria or time range
+                          {hasActiveFilters 
+                            ? 'Try adjusting your search criteria or filters' 
+                            : 'No audit events have been recorded yet'
+                          }
                         </Typography>
+                        {hasActiveFilters && (
+                          <Button 
+                            variant="outlined" 
+                            onClick={handleClearFilters}
+                            sx={{ mt: 2 }}
+                          >
+                            Clear All Filters
+                          </Button>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -667,8 +723,14 @@ const AuditPage: React.FC = () => {
                               borderRadius: 1,
                               m: 1
                             }}>
-                              <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
+                              <Box 
+                                sx={{ 
+                                  display: 'grid', 
+                                  gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
+                                  gap: 2
+                                }}
+                              >
+                                <Box>
                                   <Typography variant="subtitle2" gutterBottom>
                                     Request Details
                                   </Typography>
@@ -683,8 +745,8 @@ const AuditPage: React.FC = () => {
                                       <strong>Actor:</strong> {log.actorUserId || 'System'}
                                     </Typography>
                                   </Box>
-                                </Grid>
-                                <Grid item xs={12} md={6}>
+                                </Box>
+                                <Box>
                                   <Typography variant="subtitle2" gutterBottom>
                                     Additional Information
                                   </Typography>
@@ -701,8 +763,8 @@ const AuditPage: React.FC = () => {
                                       </Paper>
                                     )}
                                   </Box>
-                                </Grid>
-                              </Grid>
+                                </Box>
+                              </Box>
                             </Box>
                           </Collapse>
                         </TableCell>
@@ -742,8 +804,14 @@ const AuditPage: React.FC = () => {
           </DialogTitle>
           <DialogContent>
             {selectedLog && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+              <Box 
+                sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2 
+                }}
+              >
+                <Box>
                   <Typography variant="subtitle2" gutterBottom>Basic Information</Typography>
                   <Box sx={{ pl: 1 }}>
                     <Typography variant="body2"><strong>Action:</strong> {selectedLog.action}</Typography>
@@ -751,17 +819,17 @@ const AuditPage: React.FC = () => {
                     <Typography variant="body2"><strong>Method:</strong> {selectedLog.method}</Typography>
                     <Typography variant="body2"><strong>Status:</strong> {selectedLog.statusCode || 'N/A'}</Typography>
                   </Box>
-                </Grid>
-                <Grid item xs={12} sm={6}>
+                </Box>
+                <Box>
                   <Typography variant="subtitle2" gutterBottom>Request Information</Typography>
                   <Box sx={{ pl: 1 }}>
                     <Typography variant="body2"><strong>IP Address:</strong> {selectedLog.ipAddress}</Typography>
                     <Typography variant="body2"><strong>Duration:</strong> {formatDuration(selectedLog.durationMs)}</Typography>
                     <Typography variant="body2"><strong>Timestamp:</strong> {formatDateTime(selectedLog.occurredAtUtc)}</Typography>
                   </Box>
-                </Grid>
+                </Box>
                 {selectedLog.detailsJson && (
-                  <Grid item xs={12}>
+                  <Box sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}>
                     <Typography variant="subtitle2" gutterBottom>Details</Typography>
                     <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
                       <Typography component="pre" sx={{ 
@@ -772,9 +840,9 @@ const AuditPage: React.FC = () => {
                         {JSON.stringify(JSON.parse(selectedLog.detailsJson), null, 2)}
                       </Typography>
                     </Paper>
-                  </Grid>
+                  </Box>
                 )}
-              </Grid>
+              </Box>
             )}
           </DialogContent>
           <DialogActions>

@@ -24,8 +24,15 @@ public class LocalizationService : ILocalizationService
 		if (!_current.HasPermission("localization.view")) 
 			throw new UnauthorizedAccessException("Missing permission: localization.view");
 		
-		return await _db.LocalizationLabels
-			.AsNoTracking()
+		var query = _db.LocalizationLabels.AsNoTracking();
+		
+		// Filter by tenant ID if available
+		if (_current.TenantId.HasValue)
+		{
+			query = query.Where(l => l.TenantId == _current.TenantId || l.TenantId == null);
+		}
+		
+		return await query
 			.OrderBy(l => l.Language)
 			.ThenBy(l => l.Key)
 			.ToListAsync(ct);
@@ -36,12 +43,43 @@ public class LocalizationService : ILocalizationService
 		if (!_current.HasPermission("localization.upsert")) 
 			throw new UnauthorizedAccessException("Missing permission: localization.upsert");
 		
-		if (label.Id == Guid.Empty) 
-			label.Id = Guid.NewGuid();
+		// Set tenant ID if not provided
+		if (label.TenantId == null)
+		{
+			label.TenantId = _current.TenantId;
+		}
 		
-		_db.LocalizationLabels.Update(label);
-		await _db.SaveChangesAsync(ct);
-		return label;
+		// Check if a label with the same key, language, and tenant already exists
+		var existingLabel = await _db.LocalizationLabels
+			.FirstOrDefaultAsync(l => 
+				l.Key == label.Key && 
+				l.Language == label.Language && 
+				l.TenantId == label.TenantId, ct);
+		
+		if (existingLabel != null)
+		{
+			// Update existing label
+			existingLabel.Value = label.Value;
+			existingLabel.UpdatedAt = DateTime.UtcNow;
+			existingLabel.UpdatedBy = _current.UserId?.ToString();
+			
+			_db.LocalizationLabels.Update(existingLabel);
+			await _db.SaveChangesAsync(ct);
+			return existingLabel;
+		}
+		else
+		{
+			// Create new label
+			if (label.Id == Guid.Empty) 
+				label.Id = Guid.NewGuid();
+			
+			label.CreatedAt = DateTime.UtcNow;
+			label.CreatedBy = _current.UserId?.ToString();
+			
+			_db.LocalizationLabels.Add(label);
+			await _db.SaveChangesAsync(ct);
+			return label;
+		}
 	}
 
 	public async Task<LocalizationLabel?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -73,6 +111,12 @@ public class LocalizationService : ILocalizationService
 			throw new UnauthorizedAccessException("Missing permission: localization.view");
 		
 		var query = _db.LocalizationLabels.AsNoTracking();
+		
+		// Filter by tenant ID if available
+		if (_current.TenantId.HasValue)
+		{
+			query = query.Where(l => l.TenantId == _current.TenantId || l.TenantId == null);
+		}
 		
 		// Apply search filter
 		if (!string.IsNullOrWhiteSpace(request.SearchTerm))
@@ -132,6 +176,12 @@ public class LocalizationService : ILocalizationService
 		
 		var query = _db.LocalizationLabels.AsNoTracking();
 		
+		// Filter by tenant ID if available
+		if (_current.TenantId.HasValue)
+		{
+			query = query.Where(l => l.TenantId == _current.TenantId || l.TenantId == null);
+		}
+		
 		if (!string.IsNullOrWhiteSpace(searchTerm))
 		{
 			var term = searchTerm.ToLower();
@@ -157,8 +207,15 @@ public class LocalizationService : ILocalizationService
 		if (!_current.HasPermission("localization.view")) 
 			throw new UnauthorizedAccessException("Missing permission: localization.view");
 		
-		return await _db.LocalizationLabels
-			.AsNoTracking()
+		var query = _db.LocalizationLabels.AsNoTracking();
+		
+		// Filter by tenant ID if available
+		if (_current.TenantId.HasValue)
+		{
+			query = query.Where(l => l.TenantId == _current.TenantId || l.TenantId == null);
+		}
+		
+		return await query
 			.Select(l => l.Language)
 			.Distinct()
 			.OrderBy(l => l)
@@ -167,13 +224,24 @@ public class LocalizationService : ILocalizationService
 
 	public async Task<Dictionary<string, string>> GetTranslationsForLanguageAsync(string language, CancellationToken ct = default)
 	{
-		if (!_current.HasPermission("localization.view")) 
-			throw new UnauthorizedAccessException("Missing permission: localization.view");
+		// Skip permission check for this method as it's used by the i18n system
+		// and needs to be accessible without authentication
 		
-		var translations = await _db.LocalizationLabels
-			.AsNoTracking()
-			.Where(l => l.Language == language)
-			.ToListAsync(ct);
+		var query = _db.LocalizationLabels.AsNoTracking().Where(l => l.Language == language);
+		
+		// For anonymous access, only return global labels (null tenant ID)
+		// For authenticated users, filter by tenant ID if available
+		if (_current.UserId.HasValue && _current.TenantId.HasValue)
+		{
+			query = query.Where(l => l.TenantId == _current.TenantId || l.TenantId == null);
+		}
+		else
+		{
+			// Anonymous access - only global labels
+			query = query.Where(l => l.TenantId == null);
+		}
+		
+		var translations = await query.ToListAsync(ct);
 		
 		return translations.ToDictionary(l => l.Key, l => l.Value);
 	}
@@ -184,28 +252,35 @@ public class LocalizationService : ILocalizationService
 			throw new UnauthorizedAccessException("Missing permission: localization.upsert");
 		
 		var labelsList = labels.ToList();
+		var result = new List<LocalizationLabel>();
+		
 		foreach (var label in labelsList)
 		{
-			if (label.Id == Guid.Empty)
-				label.Id = Guid.NewGuid();
+			// Set tenant ID if not provided
+			if (label.TenantId == null)
+			{
+				label.TenantId = _current.TenantId;
+			}
+			
+			// Use the single UpsertAsync method for each label to handle conflicts properly
+			var upsertedLabel = await UpsertAsync(label, ct);
+			result.Add(upsertedLabel);
 		}
 		
-		_db.LocalizationLabels.UpdateRange(labelsList);
-		await _db.SaveChangesAsync(ct);
-		return labelsList;
+		return result;
 	}
 
-	public async Task<bool> ImportFromJsonAsync(string language, Dictionary<string, string> translations, CancellationToken ct = default)
+	public async Task<bool> ImportFromJsonAsync(string language, Dictionary<string, string> translations, Guid? tenantId = null, CancellationToken ct = default)
 	{
 		if (!_current.HasPermission("localization.upsert")) 
 			throw new UnauthorizedAccessException("Missing permission: localization.upsert");
 		
 		var labels = translations.Select(kvp => new LocalizationLabel
 		{
-			Id = Guid.NewGuid(),
 			Key = kvp.Key,
 			Language = language,
-			Value = kvp.Value
+			Value = kvp.Value,
+			TenantId = tenantId ?? _current.TenantId
 		}).ToList();
 		
 		await BulkUpsertAsync(labels, ct);

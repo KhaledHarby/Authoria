@@ -31,7 +31,14 @@ public class AuditController : ControllerBase
                 "audit.view",
                 "audit",
                 null,
-                new { page = request.Page, pageSize = request.PageSize, searchTerm = request.SearchTerm }
+                new { 
+                    page = request.Page, 
+                    pageSize = request.PageSize, 
+                    searchTerm = request.SearchTerm,
+                    actionType = request.ActionType,
+                    status = request.Status,
+                    timeRange = request.TimeRange
+                }
             );
 
             var dtos = logsResponse.Items.Select(log => new AuditLogDto
