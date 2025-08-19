@@ -3,20 +3,8 @@
   "WorkspaceRootPath": "D:\\NewTFS\\Authoria\\Authoria\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\controllers\\localizationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\controllers\\localizationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{18FC4071-DEA0-49AD-A669-E7FFB7B4B26F}|src\\Authoria.Seed\\Authoria.Seed.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.seed\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{18FC4071-DEA0-49AD-A669-E7FFB7B4B26F}|src\\Authoria.Seed\\Authoria.Seed.csproj|solutionrelative:src\\authoria.seed\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,7 +14,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -38,54 +26,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "appsettings.Development.json",
-              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\appsettings.Development.json",
-              "RelativeDocumentMoniker": "src\\Authoria.API\\appsettings.Development.json",
-              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\appsettings.Development.json",
-              "RelativeToolTip": "src\\Authoria.API\\appsettings.Development.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-18T13:55:30.745Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\appsettings.json",
-              "RelativeDocumentMoniker": "src\\Authoria.API\\appsettings.json",
-              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\appsettings.json",
-              "RelativeToolTip": "src\\Authoria.API\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAA2AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-18T13:55:27.495Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "LocalizationController.cs",
-              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\LocalizationController.cs",
-              "RelativeDocumentMoniker": "src\\Authoria.API\\Controllers\\LocalizationController.cs",
-              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\LocalizationController.cs",
-              "RelativeToolTip": "src\\Authoria.API\\Controllers\\LocalizationController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Title": "DashboardController.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "RelativeToolTip": "src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAQwCgAAAA5AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-18T13:27:00.713Z",
+              "WhenOpened": "2025-08-19T22:57:36.767Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Program.cs",
-              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Seed\\Program.cs",
-              "RelativeDocumentMoniker": "src\\Authoria.Seed\\Program.cs",
-              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Seed\\Program.cs",
-              "RelativeToolTip": "src\\Authoria.Seed\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-18T13:26:43.502Z"
             }
           ]
         }

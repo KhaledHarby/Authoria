@@ -27,6 +27,8 @@ import {
   Api as ApiIcon,
   Storage as StorageIcon,
   Info as InfoIcon,
+  Login as LoginIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import Layout from '../../ui/Layout';
 import { useNavigate } from 'react-router-dom';
@@ -151,45 +153,31 @@ export default function DashboardPage() {
     }
   };
 
-  // Helper functions for activity display
+  // Helper function to get activity icon
   const getActivityIcon = (activity: RecentActivity) => {
-    const action = activity.action.toLowerCase();
-    const resourceType = activity.resourceType.toLowerCase();
+    const iconName = activity.icon.toLowerCase();
     
-    if (action.includes('auth') || action.includes('login') || action.includes('logout')) {
-      return <SecurityIcon fontSize="small" />;
+    switch (iconName) {
+      case 'person_add':
+        return <PersonAddIcon fontSize="small" />;
+      case 'person':
+        return <PersonIcon fontSize="small" />;
+      case 'security':
+        return <SecurityIcon fontSize="small" />;
+      case 'key':
+        return <KeyIcon fontSize="small" />;
+      case 'login':
+        return <LoginIcon fontSize="small" />;
+      case 'translate':
+        return <TranslateIcon fontSize="small" />;
+      case 'api':
+        return <ApiIcon fontSize="small" />;
+      case 'storage':
+        return <StorageIcon fontSize="small" />;
+      default:
+        return <InfoIcon fontSize="small" />;
     }
-    if (action.includes('user') || resourceType.includes('user')) {
-      return <PeopleIcon fontSize="small" />;
-    }
-    if (action.includes('role') || resourceType.includes('role')) {
-      return <SecurityIcon fontSize="small" />;
-    }
-    if (action.includes('permission') || resourceType.includes('permission')) {
-      return <KeyIcon fontSize="small" />;
-    }
-    if (action.includes('api') || ['GET', 'POST', 'PUT', 'DELETE'].includes(activity.method.toUpperCase())) {
-      return <ApiIcon fontSize="small" />;
-    }
-    if (action.includes('db') || action.includes('database')) {
-      return <StorageIcon fontSize="small" />;
-    }
-    return <InfoIcon fontSize="small" />;
   };
-
-  const getActivityColor = (activity: RecentActivity) => {
-    const action = activity.action.toLowerCase();
-    const statusCode = activity.statusCode;
-    
-    if (statusCode && statusCode >= 200 && statusCode < 300) return '#10b981';
-    if (statusCode && statusCode >= 400) return '#ef4444';
-    if (action.includes('create') || action.includes('add')) return '#3b82f6';
-    if (action.includes('update') || action.includes('edit')) return '#f59e0b';
-    if (action.includes('delete') || action.includes('remove')) return '#ef4444';
-    return '#6b7280';
-  };
-
-
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date();
@@ -200,21 +188,6 @@ export default function DashboardPage() {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
-  };
-
-  const getActivityDescription = (activity: RecentActivity) => {
-    const action = activity.action;
-    const resourceType = activity.resourceType;
-    const method = activity.method;
-    
-    if (action.includes('login')) return `User login via ${method}`;
-    if (action.includes('logout')) return `User logout`;
-    if (action.includes('create')) return `${resourceType} created via ${method}`;
-    if (action.includes('update')) return `${resourceType} updated via ${method}`;
-    if (action.includes('delete')) return `${resourceType} deleted via ${method}`;
-    if (action.includes('view')) return `${resourceType} viewed via ${method}`;
-    
-    return `${action} on ${resourceType}`;
   };
 
   // Stats cards with real data
@@ -393,20 +366,20 @@ export default function DashboardPage() {
                           width: 40,
                           height: 40,
                           mr: 2,
-                          backgroundColor: getActivityColor(activity),
+                          backgroundColor: activity.color,
                         }}
                       >
                         {getActivityIcon(activity)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          {activity.action}
+                          {activity.title}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {getActivityDescription(activity)}
+                          {activity.description}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {activity.actorUserId ? `User: ${activity.actorUserId}` : 'System'} • {activity.ipAddress}
+                          {activity.actorUserId ? `User: ${activity.actorUserId}` : 'System'}
                         </Typography>
                       </Box>
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>

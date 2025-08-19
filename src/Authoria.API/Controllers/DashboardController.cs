@@ -4,6 +4,7 @@ using Authoria.Application.Roles;
 using Authoria.Application.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace Authoria.API.Controllers;
 
@@ -79,6 +80,248 @@ public class DashboardController : ControllerBase
             return StatusCode(500, new { message = "Failed to retrieve dashboard statistics", error = ex.Message });
         }
     }
+
+    [HttpGet("recent-activities")]
+    public async Task<ActionResult<List<RecentActivityDto>>> GetRecentActivities([FromQuery] int take = 10)
+    {
+        try
+        {
+            var logs = await _auditQueryService.RecentAsync(take * 2, HttpContext.RequestAborted); // Get more to filter meaningful ones
+            var meaningfulActivities = new List<RecentActivityDto>();
+
+            foreach (var log in logs)
+            {
+                var activity = CreateMeaningfulActivity(log);
+                if (activity != null)
+                {
+                    meaningfulActivities.Add(activity);
+                    if (meaningfulActivities.Count >= take)
+                        break;
+                }
+            }
+
+            return Ok(meaningfulActivities);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to retrieve recent activities", error = ex.Message });
+        }
+    }
+
+    private RecentActivityDto? CreateMeaningfulActivity(Application.Audit.AuditLog log)
+    {
+        var action = log.Action.ToLower();
+        var resourceType = log.ResourceType.ToLower();
+        var details = !string.IsNullOrEmpty(log.DetailsJson) 
+            ? JsonSerializer.Deserialize<Dictionary<string, object>>(log.DetailsJson) 
+            : null;
+
+        // User management activities
+        if (action.Contains("create") && resourceType.Contains("user"))
+        {
+            var userName = GetUserNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "New User Created",
+                Description = $"User '{userName}' was created",
+                Icon = "person_add",
+                Color = "#3b82f6",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        if (action.Contains("update") && resourceType.Contains("user"))
+        {
+            var userName = GetUserNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "User Updated",
+                Description = $"User '{userName}' was updated",
+                Icon = "person",
+                Color = "#f59e0b",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        // Role management activities
+        if (action.Contains("assign") && resourceType.Contains("role"))
+        {
+            var roleName = GetRoleNameFromDetails(details);
+            var userName = GetUserNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "Role Assigned",
+                Description = $"'{roleName}' role has been assigned to '{userName}'",
+                Icon = "security",
+                Color = "#10b981",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        if (action.Contains("remove") && resourceType.Contains("role"))
+        {
+            var roleName = GetRoleNameFromDetails(details);
+            var userName = GetUserNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "Role Removed",
+                Description = $"'{roleName}' role has been removed from '{userName}'",
+                Icon = "security",
+                Color = "#ef4444",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        if (action.Contains("create") && resourceType.Contains("role"))
+        {
+            var roleName = GetRoleNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "New Role Created",
+                Description = $"Role '{roleName}' was created",
+                Icon = "security",
+                Color = "#8b5cf6",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        // Permission activities
+        if (action.Contains("permission") && (action.Contains("grant") || action.Contains("assign")))
+        {
+            var permissionName = GetPermissionNameFromDetails(details);
+            var targetName = GetTargetNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "Permission Granted",
+                Description = $"Permission '{permissionName}' was granted to '{targetName}'",
+                Icon = "key",
+                Color = "#059669",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        // Login activities
+        if (action.Contains("login") || action.Contains("auth"))
+        {
+            var userName = GetUserNameFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "User Login",
+                Description = $"User '{userName}' logged in",
+                Icon = "login",
+                Color = "#3b82f6",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        // Localization activities
+        if (resourceType.Contains("localization") || resourceType.Contains("label"))
+        {
+            var labelKey = GetLabelKeyFromDetails(details);
+            return new RecentActivityDto
+            {
+                Id = log.Id,
+                Title = "Localization Updated",
+                Description = $"Localization label '{labelKey}' was updated",
+                Icon = "translate",
+                Color = "#8b5cf6",
+                OccurredAtUtc = log.OccurredAtUtc,
+                ActorUserId = log.ActorUserId
+            };
+        }
+
+        // Skip generic API calls and other non-meaningful activities
+        return null;
+    }
+
+    private string GetUserNameFromDetails(Dictionary<string, object>? details)
+    {
+        if (details == null) return "Unknown User";
+        
+        if (details.TryGetValue("userName", out var userName) && userName != null)
+            return userName.ToString() ?? "Unknown User";
+        
+        if (details.TryGetValue("email", out var email) && email != null)
+            return email.ToString() ?? "Unknown User";
+        
+        if (details.TryGetValue("name", out var name) && name != null)
+            return name.ToString() ?? "Unknown User";
+        
+        return "Unknown User";
+    }
+
+    private string GetRoleNameFromDetails(Dictionary<string, object>? details)
+    {
+        if (details == null) return "Unknown Role";
+        
+        if (details.TryGetValue("roleName", out var roleName) && roleName != null)
+            return roleName.ToString() ?? "Unknown Role";
+        
+        if (details.TryGetValue("name", out var name) && name != null)
+            return name.ToString() ?? "Unknown Role";
+        
+        return "Unknown Role";
+    }
+
+    private string GetPermissionNameFromDetails(Dictionary<string, object>? details)
+    {
+        if (details == null) return "Unknown Permission";
+        
+        if (details.TryGetValue("permissionName", out var permissionName) && permissionName != null)
+            return permissionName.ToString() ?? "Unknown Permission";
+        
+        if (details.TryGetValue("name", out var name) && name != null)
+            return name.ToString() ?? "Unknown Permission";
+        
+        return "Unknown Permission";
+    }
+
+    private string GetTargetNameFromDetails(Dictionary<string, object>? details)
+    {
+        if (details == null) return "Unknown Target";
+        
+        if (details.TryGetValue("targetName", out var targetName) && targetName != null)
+            return targetName.ToString() ?? "Unknown Target";
+        
+        if (details.TryGetValue("userName", out var userName) && userName != null)
+            return userName.ToString() ?? "Unknown Target";
+        
+        if (details.TryGetValue("roleName", out var roleName) && roleName != null)
+            return roleName.ToString() ?? "Unknown Target";
+        
+        return "Unknown Target";
+    }
+
+    private string GetLabelKeyFromDetails(Dictionary<string, object>? details)
+    {
+        if (details == null) return "Unknown Label";
+        
+        if (details.TryGetValue("key", out var key) && key != null)
+            return key.ToString() ?? "Unknown Label";
+        
+        if (details.TryGetValue("labelKey", out var labelKey) && labelKey != null)
+            return labelKey.ToString() ?? "Unknown Label";
+        
+        return "Unknown Label";
+    }
 }
 
 public class DashboardStatsDto
@@ -88,5 +331,16 @@ public class DashboardStatsDto
     public int TotalPermissions { get; set; }
     public int TotalAuditEvents { get; set; }
     public int RecentActivityCount { get; set; }
+}
+
+public class RecentActivityDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public DateTime OccurredAtUtc { get; set; }
+    public Guid? ActorUserId { get; set; }
 }
 

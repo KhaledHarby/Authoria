@@ -10,14 +10,12 @@ export interface DashboardStats {
 
 export interface RecentActivity {
   id: string;
-  action: string;
-  resourceType: string;
-  method: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
   occurredAtUtc: string;
   actorUserId?: string;
-  statusCode?: number;
-  ipAddress: string;
-  path: string;
 }
 
 export const dashboardApi = {
@@ -27,15 +25,15 @@ export const dashboardApi = {
     return response.data;
   },
 
-  // Get recent activities (last 10 audit logs)
+  // Get meaningful recent activities
   getRecentActivities: async (): Promise<RecentActivity[]> => {
-    const response = await http.get<RecentActivity[]>('/api/audit/recent?take=10');
+    const response = await http.get<RecentActivity[]>('/api/dashboard/recent-activities?take=10');
     return response.data;
   },
 
   // Get recent activities with pagination
   getRecentActivitiesPaginated: async (take: number = 10): Promise<RecentActivity[]> => {
-    const response = await http.get<RecentActivity[]>(`/api/audit/recent?take=${take}`);
+    const response = await http.get<RecentActivity[]>(`/api/dashboard/recent-activities?take=${take}`);
     return response.data;
   }
 };
