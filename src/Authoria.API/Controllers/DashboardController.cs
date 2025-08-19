@@ -5,6 +5,7 @@ using Authoria.Application.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Authoria.Domain.Entities;
 
 namespace Authoria.API.Controllers;
 
@@ -112,7 +113,7 @@ public class DashboardController : ControllerBase
         }
     }
 
-    private RecentActivityDto? CreateMeaningfulActivity(Application.Audit.AuditLog log)
+    private RecentActivityDto? CreateMeaningfulActivity(AuditLog log)
     {
         try
         {
