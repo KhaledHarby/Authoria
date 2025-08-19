@@ -1,6 +1,7 @@
+using Authoria.Application.Users;
 using Authoria.Application.Users.Dtos;
+using Authoria.Application.Common;
 using Authoria.Domain.Entities;
-using Authoria.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,65 +12,43 @@ namespace Authoria.API.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-	private readonly AuthoriaDbContext _db;
-	public UsersController(AuthoriaDbContext db) { _db = db; }
+	private readonly IUserService _users;
+	public UsersController(IUserService users) { _users = users; }
 
 	[HttpGet]
 	[Authorize]
-	public async Task<IActionResult> List()
-	{
-		var users = await _db.Users.Select(u => new UserDto
-		{
-			Id = u.Id,
-			Email = u.Email,
-			FirstName = u.FirstName,
-			LastName = u.LastName,
-			Status = u.Status.ToString()
-		}).ToListAsync();
-		return Ok(users);
-	}
+	public async Task<IActionResult> List([FromQuery] PaginationRequest request) => Ok(await _users.ListAsync(request));
 
 	[HttpGet("{id}")]
 	[Authorize]
 	public async Task<ActionResult<UserDto>> Get(Guid id)
 	{
-		var u = await _db.Users.FindAsync(id);
-		if (u == null) return NotFound();
-		return new UserDto { Id = u.Id, Email = u.Email, FirstName = u.FirstName, LastName = u.LastName, Status = u.Status.ToString() };
+		var u = await _users.GetAsync(id);
+		return u == null ? NotFound() : Ok(u);
 	}
 
 	[HttpPost]
 	[Authorize]
 	public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest req)
 	{
-		var user = new User { Id = Guid.NewGuid(), Email = req.Email, PasswordHash = "TODO_HASH", FirstName = req.FirstName, LastName = req.LastName, Status = UserStatus.Active };
-		_db.Users.Add(user);
-		await _db.SaveChangesAsync();
-		return CreatedAtAction(nameof(Get), new { id = user.Id }, new UserDto { Id = user.Id, Email = user.Email, FirstName = user.FirstName, LastName = user.LastName, Status = user.Status.ToString() });
+		var user = await _users.CreateAsync(req);
+		return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
 	}
 
 	[HttpPut("{id}")]
 	[Authorize]
 	public async Task<ActionResult<UserDto>> Update(Guid id, [FromBody] UpdateUserRequest req)
 	{
-		var u = await _db.Users.FindAsync(id);
-		if (u == null) return NotFound();
-		if (req.FirstName != null) u.FirstName = req.FirstName;
-		if (req.LastName != null) u.LastName = req.LastName;
-		if (req.Status != null && Enum.TryParse<UserStatus>(req.Status, true, out var st)) u.Status = st;
-		await _db.SaveChangesAsync();
-		return new UserDto { Id = u.Id, Email = u.Email, FirstName = u.FirstName, LastName = u.LastName, Status = u.Status.ToString() };
+		var u = await _users.UpdateAsync(id, req);
+		return u == null ? NotFound() : Ok(u);
 	}
 
 	[HttpDelete("{id}")]
 	[Authorize]
 	public async Task<IActionResult> Delete(Guid id)
 	{
-		var u = await _db.Users.FindAsync(id);
-		if (u == null) return NotFound();
-		_db.Users.Remove(u);
-		await _db.SaveChangesAsync();
-		return NoContent();
+		var ok = await _users.DeleteAsync(id);
+		return ok ? NoContent() : NotFound();
 	}
 }
 

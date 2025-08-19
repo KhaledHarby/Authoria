@@ -1,5 +1,6 @@
+using Authoria.Application.Permissions;
+using Authoria.Application.Common;
 using Authoria.Domain.Entities;
-using Authoria.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,22 +11,16 @@ namespace Authoria.API.Controllers;
 [Route("api/[controller]")]
 public class PermissionsController : ControllerBase
 {
-	private readonly AuthoriaDbContext _db;
-	public PermissionsController(AuthoriaDbContext db) { _db = db; }
+	private readonly IPermissionService _perms;
+	public PermissionsController(IPermissionService perms) { _perms = perms; }
 
 	[HttpGet]
 	[Authorize]
-	public async Task<IActionResult> List() => Ok(await _db.Permissions.AsNoTracking().ToListAsync());
+	public async Task<IActionResult> List([FromQuery] PaginationRequest request) => Ok(await _perms.ListAsync(request));
 
 	[HttpPost]
 	[Authorize]
-	public async Task<IActionResult> Create([FromBody] Permission p)
-	{
-		p.Id = Guid.NewGuid();
-		_db.Permissions.Add(p);
-		await _db.SaveChangesAsync();
-		return Ok(p);
-	}
+	public async Task<IActionResult> Create([FromBody] Permission p) => Ok(await _perms.CreateAsync(p));
 }
 
 

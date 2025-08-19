@@ -10,6 +10,7 @@ public class User
 	public UserStatus Status { get; set; } = UserStatus.Active;
 	public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 	public DateTime? LockedUntilUtc { get; set; }
+	public DateTime? LastLoginAtUtc { get; set; }
 
 	public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 	public ICollection<UserTenant> UserTenants { get; set; } = new List<UserTenant>();

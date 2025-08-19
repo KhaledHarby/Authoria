@@ -1,5 +1,6 @@
+using Authoria.Application.Roles;
+using Authoria.Application.Common;
 using Authoria.Domain.Entities;
-using Authoria.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,41 +11,51 @@ namespace Authoria.API.Controllers;
 [Route("api/[controller]")]
 public class RolesController : ControllerBase
 {
-	private readonly AuthoriaDbContext _db;
-	public RolesController(AuthoriaDbContext db) { _db = db; }
+	private readonly IRoleService _roles;
+	public RolesController(IRoleService roles) { _roles = roles; }
 
 	[HttpGet]
 	[Authorize]
-	public async Task<IActionResult> List() => Ok(await _db.Roles.AsNoTracking().ToListAsync());
+	public async Task<IActionResult> List([FromQuery] PaginationRequest request) => Ok(await _roles.ListAsync(request));
 
 	[HttpPost]
 	[Authorize]
-	public async Task<IActionResult> Create([FromBody] Role role)
+	public async Task<IActionResult> Create([FromBody] CreateRoleRequest request) => Ok(await _roles.CreateAsync(request));
+
+	[HttpPut("{id}")]
+	[Authorize]
+	public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoleRequest request)
 	{
-		role.Id = Guid.NewGuid();
-		_db.Roles.Add(role);
-		await _db.SaveChangesAsync();
-		return Ok(role);
+		var updatedRole = await _roles.UpdateAsync(id, request);
+		return updatedRole == null ? NotFound() : Ok(updatedRole);
 	}
 
 	[HttpPost("{roleId}/permissions/{permissionId}")]
 	[Authorize]
 	public async Task<IActionResult> AssignPermission(Guid roleId, Guid permissionId)
-	{
-		if (!await _db.Roles.AnyAsync(r => r.Id == roleId) || !await _db.Permissions.AnyAsync(p => p.Id == permissionId)) return NotFound();
-		_db.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permissionId });
-		await _db.SaveChangesAsync();
-		return NoContent();
-	}
+		=> (await _roles.AssignPermissionAsync(roleId, permissionId)) ? NoContent() : NotFound();
+
+	[HttpDelete("{roleId}/permissions/{permissionId}")]
+	[Authorize]
+	public async Task<IActionResult> RemovePermission(Guid roleId, Guid permissionId)
+		=> (await _roles.RemovePermissionAsync(roleId, permissionId)) ? NoContent() : NotFound();
 
 	[HttpPost("assign/{userId}/{roleId}")]
 	[Authorize]
 	public async Task<IActionResult> AssignRoleToUser(Guid userId, Guid roleId)
+		=> (await _roles.AssignRoleToUserAsync(userId, roleId)) ? NoContent() : NotFound();
+
+	[HttpDelete("assign/{userId}/{roleId}")]
+	[Authorize]
+	public async Task<IActionResult> RemoveRoleFromUser(Guid userId, Guid roleId)
+		=> (await _roles.RemoveRoleFromUserAsync(userId, roleId)) ? NoContent() : NotFound();
+
+	[HttpDelete("{id}")]
+	[Authorize]
+	public async Task<IActionResult> Delete(Guid id)
 	{
-		if (!await _db.Users.AnyAsync(u => u.Id == userId) || !await _db.Roles.AnyAsync(r => r.Id == roleId)) return NotFound();
-		_db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
-		await _db.SaveChangesAsync();
-		return NoContent();
+		var ok = await _roles.DeleteAsync(id);
+		return ok ? NoContent() : NotFound();
 	}
 }
 

@@ -19,6 +19,7 @@ public class AuthoriaDbContext : DbContext
 	public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
 	public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 	public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+	public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -92,6 +93,13 @@ public class AuthoriaDbContext : DbContext
 		{
 			b.HasIndex(x => new { x.UserId, x.Token }).IsUnique();
 			b.Property(x => x.Token).HasMaxLength(512).IsRequired();
+		});
+
+		modelBuilder.Entity<PasswordResetToken>(b =>
+		{
+			b.HasIndex(x => x.Token).IsUnique();
+			b.Property(x => x.Token).HasMaxLength(512).IsRequired();
+			b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
 		});
 	}
 }
