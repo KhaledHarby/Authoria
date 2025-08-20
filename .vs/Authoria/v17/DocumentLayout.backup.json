@@ -1,7 +1,28 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\NewTFS\\Authoria\\Authoria\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD45EA1-03FD-41FB-8C03-12221B7610DD}|src\\Authoria.Infrastructure\\Authoria.Infrastructure.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.infrastructure\\services\\users\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EDD45EA1-03FD-41FB-8C03-12221B7610DD}|src\\Authoria.Infrastructure\\Authoria.Infrastructure.csproj|solutionrelative:src\\authoria.infrastructure\\services\\users\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\controllers\\userscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\controllers\\userscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD45EA1-03FD-41FB-8C03-12221B7610DD}|src\\Authoria.Infrastructure\\Authoria.Infrastructure.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.infrastructure\\services\\auth\\jwttokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EDD45EA1-03FD-41FB-8C03-12221B7610DD}|src\\Authoria.Infrastructure\\Authoria.Infrastructure.csproj|solutionrelative:src\\authoria.infrastructure\\services\\auth\\jwttokenservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|d:\\newtfs\\authoria\\authoria\\src\\authoria.api\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1E2E6877-E1B1-472C-88C2-641B99D7708C}|src\\Authoria.API\\Authoria.API.csproj|solutionrelative:src\\authoria.api\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,7 +30,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -18,6 +39,69 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.API\\Program.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Program.cs",
+              "RelativeToolTip": "src\\Authoria.API\\Program.cs",
+              "ViewState": "AgIAADYAAAAAAAAAAAD4v0UAAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-20T14:25:04.54Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "UserService.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Infrastructure\\Services\\Users\\UserService.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.Infrastructure\\Services\\Users\\UserService.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Infrastructure\\Services\\Users\\UserService.cs",
+              "RelativeToolTip": "src\\Authoria.Infrastructure\\Services\\Users\\UserService.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAAtwCAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-20T14:03:12.481Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "UsersController.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\UsersController.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.API\\Controllers\\UsersController.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\UsersController.cs",
+              "RelativeToolTip": "src\\Authoria.API\\Controllers\\UsersController.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAApwBgAAABkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-20T13:05:29.172Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DashboardController.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "RelativeToolTip": "src\\Authoria.API\\Controllers\\DashboardController.cs",
+              "ViewState": "AgIAADAAAAAAAAAAAAAowD8AAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-20T13:06:40.282Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "JwtTokenService.cs",
+              "DocumentMoniker": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Infrastructure\\Services\\Auth\\JwtTokenService.cs",
+              "RelativeDocumentMoniker": "src\\Authoria.Infrastructure\\Services\\Auth\\JwtTokenService.cs",
+              "ToolTip": "D:\\NewTFS\\Authoria\\Authoria\\src\\Authoria.Infrastructure\\Services\\Auth\\JwtTokenService.cs",
+              "RelativeToolTip": "src\\Authoria.Infrastructure\\Services\\Auth\\JwtTokenService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-20T13:05:29.233Z"
             }
           ]
         }

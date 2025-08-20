@@ -47,7 +47,7 @@ public class CurrentUserContext : ICurrentUserContext
 		}
 		
 		ApplicationIds = parsed.Distinct().ToArray();
-		ApplicationId = ApplicationIds.FirstOrDefault();
+		//ApplicationId = ApplicationIds.FirstOrDefault();
 
 		Roles = user?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray() ?? Array.Empty<string>();
 		Permissions = user?.FindAll("perm").Select(c => c.Value).ToArray() ?? Array.Empty<string>();

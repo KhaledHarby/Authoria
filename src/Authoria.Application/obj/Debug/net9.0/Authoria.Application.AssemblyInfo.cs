@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Authoria.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1ebed629a84655b4aa385c7815a39cdacc87045d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+84a68f092daecb7662331dac897b8791af74e8d4")]
 [assembly: System.Reflection.AssemblyProductAttribute("Authoria.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Authoria.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
