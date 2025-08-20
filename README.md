@@ -24,7 +24,7 @@ A comprehensive IAM system built with .NET Core (ASP.NET Core Web API) and React
 
 The project is configured to use the following connection string:
 ```
-Server=10.24.15.15;Database=Authoria;User ID=accela;Password=accela;Min Pool Size=50;TrustServerCertificate=True;
+Server=localhost;Database=Authoria;User ID=user;Password=password;Min Pool Size=50;TrustServerCertificate=True;
 ```
 
 #### Option 1: Using PowerShell Script
