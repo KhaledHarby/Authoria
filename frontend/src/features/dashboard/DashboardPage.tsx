@@ -11,6 +11,8 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  useMediaQuery,
+  Stack,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -39,6 +41,8 @@ export default function DashboardPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
@@ -225,7 +229,13 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <Layout>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Box 
+          display="flex" 
+          justifyContent="center" 
+          alignItems="center" 
+          minHeight={{ xs: '60vh', sm: '400px' }}
+          p={{ xs: 2, sm: 3 }}
+        >
           <CircularProgress size={60} thickness={4} />
         </Box>
       </Layout>
@@ -234,13 +244,26 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <Box>
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+          <Typography 
+            variant={isMobile ? "h5" : "h4"} 
+            sx={{ 
+              fontWeight: 700, 
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+            }}
+          >
             {t('dashboard.title')}
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: 'text.secondary',
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
+          >
             {t('dashboard.welcome')}
           </Typography>
         </Box>
@@ -264,8 +287,8 @@ export default function DashboardPage() {
           sx={{ 
             display: 'grid', 
             gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-            gap: 3,
-            mb: 4 
+            gap: { xs: 2, sm: 3 },
+            mb: { xs: 3, sm: 4 } 
           }}
         >
           {statsCards.map((card, index) => (
@@ -273,29 +296,42 @@ export default function DashboardPage() {
               key={index}
               sx={{
                 height: '100%',
-                transition: 'transform 0.2s ease-in-out',
+                transition: 'all 0.3s ease-in-out',
                 '&:hover': {
                   transform: 'translateY(-4px)',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                 },
               }}
             >
-              <CardContent>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Avatar
                     sx={{
                       backgroundColor: card.color,
-                      width: 48,
-                      height: 48,
+                      width: { xs: 40, sm: 48 },
+                      height: { xs: 40, sm: 48 },
                       mr: 2,
                     }}
                   >
                     {card.icon}
                   </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography 
+                      variant={isMobile ? "h5" : "h4"} 
+                      sx={{ 
+                        fontWeight: 700,
+                        fontSize: { xs: '1.5rem', sm: '2rem' }
+                      }}
+                    >
                       {card.value}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'text.secondary',
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                      }}
+                    >
                       {card.title}
                     </Typography>
                   </Box>
@@ -304,7 +340,7 @@ export default function DashboardPage() {
                   <TrendingUpIcon
                     sx={{
                       color: card.change.startsWith('+') ? 'success.main' : 'text.secondary',
-                      fontSize: 16,
+                      fontSize: { xs: 14, sm: 16 },
                       mr: 0.5,
                     }}
                   />
@@ -313,6 +349,7 @@ export default function DashboardPage() {
                     sx={{
                       color: card.change.startsWith('+') ? 'success.main' : 'text.secondary',
                       fontWeight: 600,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
                     }}
                   >
                     {card.change} from last month
@@ -327,94 +364,163 @@ export default function DashboardPage() {
         <Box 
           sx={{ 
             display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
-            gap: 3
+            gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' },
+            gap: { xs: 2, sm: 3 }
           }}
         >
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                {t('dashboard.recentActivity')}
-              </Typography>
-              <Box>
-                {recentActivities.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <HistoryIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                      No recent activities
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Recent system activities will appear here
-                    </Typography>
-                  </Box>
-                ) : (
-                  recentActivities.map((activity) => (
-                    <Box
-                      key={activity.id}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        py: 2,
-                        borderBottom: `1px solid ${theme.palette.divider}`,
-                        '&:last-child': {
-                          borderBottom: 'none',
-                        },
-                      }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          mr: 2,
-                          backgroundColor: activity.color,
-                        }}
+          <Card sx={{ height: 'fit-content' }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    mb: 3,
+                    fontSize: { xs: '1.125rem', sm: '1.25rem' }
+                  }}
+                >
+                  {t('dashboard.recentActivity')}
+                </Typography>
+                <Box>
+                  {recentActivities.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: { xs: 3, sm: 4 } }}>
+                      <HistoryIcon sx={{ fontSize: { xs: 40, sm: 48 }, color: 'text.secondary', mb: 2 }} />
+                      <Typography 
+                        variant="h6" 
+                        color="text.secondary" 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '1rem', sm: '1.125rem' } }}
                       >
-                        {getActivityIcon(activity)}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          {activity.title}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {activity.description}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          {activity.actorUserId ? `User: ${activity.actorUserId}` : 'System'}
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {formatTimeAgo(activity.occurredAtUtc)}
+                        No recent activities
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                      >
+                        Recent system activities will appear here
                       </Typography>
                     </Box>
-                  ))
-                )}
-              </Box>
-            </CardContent>
-          </Card>
+                  ) : (
+                    <Stack spacing={1}>
+                      {recentActivities.map((activity) => (
+                        <Box
+                          key={activity.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            py: { xs: 1.5, sm: 2 },
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: 2,
+                            '&:hover': {
+                              backgroundColor: 'action.hover',
+                            },
+                            transition: 'background-color 0.2s ease-in-out',
+                          }}
+                        >
+                          <Avatar
+                            sx={{
+                              width: { xs: 32, sm: 40 },
+                              height: { xs: 32, sm: 40 },
+                              mr: 2,
+                              backgroundColor: activity.color,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {getActivityIcon(activity)}
+                          </Avatar>
+                          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Typography 
+                              variant="body1" 
+                              sx={{ 
+                                fontWeight: 600,
+                                fontSize: { xs: '0.875rem', sm: '1rem' },
+                                mb: 0.5
+                              }}
+                            >
+                              {activity.title}
+                            </Typography>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                color: 'text.secondary',
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                mb: 0.5
+                              }}
+                            >
+                              {activity.description}
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: 'text.secondary',
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                              }}
+                            >
+                              {activity.actorUserId ? `User: ${activity.actorUserId}` : 'System'}
+                            </Typography>
+                          </Box>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                              flexShrink: 0,
+                              ml: 1
+                            }}
+                          >
+                            {formatTimeAgo(activity.occurredAtUtc)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+          <Card sx={{ height: 'fit-content' }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 3,
+                  fontSize: { xs: '1.125rem', sm: '1.25rem' }
+                }}
+              >
                 {t('dashboard.quickActions.title')}
               </Typography>
               
               {/* Primary Actions */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: 'text.secondary' }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 2, 
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
                 {t('dashboard.quickActions.primary')}
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+              <Stack spacing={1.5} sx={{ mb: 3 }}>
                 {quickActions.slice(0, 4).map((action) => (
-                  <Tooltip key={action.id} title={action.description} placement="left">
+                  <Tooltip 
+                    key={action.id} 
+                    title={action.description} 
+                    placement={isMobile ? "top" : "left"}
+                  >
                     <Button
                       variant="outlined"
                       startIcon={action.icon}
                       onClick={() => handleQuickAction(action.action)}
                       sx={{
                         justifyContent: 'flex-start',
-                        py: 1.5,
-                        px: 2,
+                        py: { xs: 1, sm: 1.5 },
+                        px: { xs: 1.5, sm: 2 },
                         borderColor: action.color,
                         color: action.color,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         '&:hover': {
                           backgroundColor: action.color,
                           color: 'white',
@@ -428,26 +534,39 @@ export default function DashboardPage() {
                     </Button>
                   </Tooltip>
                 ))}
-              </Box>
+              </Stack>
 
               <Divider sx={{ my: 2 }} />
 
               {/* Secondary Actions */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: 'text.secondary' }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 2, 
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
                 {t('dashboard.quickActions.secondary')}
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+              <Stack spacing={1.5} sx={{ mb: 3 }}>
                 {quickActions.slice(4, 6).map((action) => (
-                  <Tooltip key={action.id} title={action.description} placement="left">
+                  <Tooltip 
+                    key={action.id} 
+                    title={action.description} 
+                    placement={isMobile ? "top" : "left"}
+                  >
                     <Button
                       variant="text"
                       startIcon={action.icon}
                       onClick={() => handleQuickAction(action.action)}
                       sx={{
                         justifyContent: 'flex-start',
-                        py: 1,
-                        px: 2,
+                        py: { xs: 0.75, sm: 1 },
+                        px: { xs: 1.5, sm: 2 },
                         color: action.color,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         '&:hover': {
                           backgroundColor: `${action.color}15`,
                         },
@@ -459,26 +578,39 @@ export default function DashboardPage() {
                     </Button>
                   </Tooltip>
                 ))}
-              </Box>
+              </Stack>
 
               <Divider sx={{ my: 2 }} />
 
               {/* Utility Actions */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: 'text.secondary' }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 2, 
+                  color: 'text.secondary',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
                 {t('dashboard.quickActions.utilities')}
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Stack spacing={1.5}>
                 {quickActions.slice(6).map((action) => (
-                  <Tooltip key={action.id} title={action.description} placement="left">
+                  <Tooltip 
+                    key={action.id} 
+                    title={action.description} 
+                    placement={isMobile ? "top" : "left"}
+                  >
                     <Button
                       variant="text"
                       startIcon={action.icon}
                       onClick={() => handleQuickAction(action.action)}
                       sx={{
                         justifyContent: 'flex-start',
-                        py: 1,
-                        px: 2,
+                        py: { xs: 0.75, sm: 1 },
+                        px: { xs: 1.5, sm: 2 },
                         color: action.color,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         '&:hover': {
                           backgroundColor: `${action.color}15`,
                         },
@@ -490,7 +622,7 @@ export default function DashboardPage() {
                     </Button>
                   </Tooltip>
                 ))}
-              </Box>
+              </Stack>
             </CardContent>
           </Card>
         </Box>

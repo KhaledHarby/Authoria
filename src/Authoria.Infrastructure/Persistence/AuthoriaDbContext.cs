@@ -12,6 +12,7 @@ public class AuthoriaDbContext : DbContext
 	public DbSet<Permission> Permissions => Set<Permission>();
 	public DbSet<UserRole> UserRoles => Set<UserRole>();
 	public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+	public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
 	public DbSet<Tenant> Tenants => Set<Tenant>();
 	public DbSet<UserTenant> UserTenants => Set<UserTenant>();
 	public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -57,6 +58,15 @@ public class AuthoriaDbContext : DbContext
 			b.HasOne(x => x.Permission).WithMany(x => x.RolePermissions).HasForeignKey(x => x.PermissionId);
 		});
 
+		modelBuilder.Entity<UserPermission>(b =>
+		{
+			b.HasKey(x => new { x.UserId, x.PermissionId });
+			b.HasOne(x => x.User).WithMany(x => x.UserPermissions).HasForeignKey(x => x.UserId);
+			b.HasOne(x => x.Permission).WithMany(x => x.UserPermissions).HasForeignKey(x => x.PermissionId);
+			b.HasOne(x => x.GrantedByUser).WithMany().HasForeignKey(x => x.GrantedByUserId);
+			b.Property(x => x.Notes).HasMaxLength(500);
+		});
+
 		modelBuilder.Entity<Tenant>(b =>
 		{
 			b.Property(x => x.Name).HasMaxLength(200).IsRequired();
@@ -99,7 +109,16 @@ public class AuthoriaDbContext : DbContext
 		{
 			b.HasIndex(x => x.Token).IsUnique();
 			b.Property(x => x.Token).HasMaxLength(512).IsRequired();
-			b.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+		});
+
+		modelBuilder.Entity<AuditLog>(b =>
+		{
+			b.HasIndex(x => new { x.TenantId, x.OccurredAtUtc });
+			b.HasIndex(x => new { x.ActorUserId, x.OccurredAtUtc });
+			b.Property(x => x.Action).HasMaxLength(100).IsRequired();
+			b.Property(x => x.ResourceType).HasMaxLength(100).IsRequired();
+			b.Property(x => x.ResourceId).HasMaxLength(100);
+			b.Property(x => x.DetailsJson).HasMaxLength(4000);
 		});
 	}
 }

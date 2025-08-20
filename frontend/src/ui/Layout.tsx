@@ -17,6 +17,8 @@ import {
   MenuItem,
   Chip,
   useTheme,
+  useMediaQuery,
+  Stack,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -50,6 +52,8 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const { isRTL, darkMode } = useSelector((state: RootState) => state.settings);
@@ -88,13 +92,11 @@ export default function Layout({ children }: LayoutProps) {
     localStorage.setItem('authoria-dark-mode', newDarkMode.toString());
   };
 
-
-
   const drawer = (
     <Box>
       <Box
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -103,21 +105,39 @@ export default function Layout({ children }: LayoutProps) {
       >
         <Box
           sx={{
-            width: 40,
-            height: 40,
+            width: { xs: 32, sm: 40 },
+            height: { xs: 32, sm: 40 },
             borderRadius: 2,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexShrink: 0,
           }}
         >
-          <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              color: 'white', 
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}
+          >
             A
           </Typography>
         </Box>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 700, 
+              color: 'text.primary',
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
             Authoria
           </Typography>
           <Chip
@@ -126,8 +146,8 @@ export default function Layout({ children }: LayoutProps) {
             sx={{
               backgroundColor: theme.palette.primary.main,
               color: 'white',
-              fontSize: '0.75rem',
-              height: 20,
+              fontSize: { xs: '0.625rem', sm: '0.75rem' },
+              height: { xs: 16, sm: 20 },
             }}
           />
         </Box>
@@ -136,12 +156,18 @@ export default function Layout({ children }: LayoutProps) {
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile) {
+                  setMobileOpen(false);
+                }
+              }}
               selected={location.pathname === item.path}
               sx={{
-                mx: 1,
+                mx: { xs: 1, sm: 1.5 },
                 borderRadius: 2,
                 mb: 0.5,
+                py: { xs: 1, sm: 1.5 },
                 '&.Mui-selected': {
                   backgroundColor: theme.palette.primary.main,
                   color: 'white',
@@ -159,7 +185,7 @@ export default function Layout({ children }: LayoutProps) {
             >
               <ListItemIcon
                 sx={{
-                  minWidth: 40,
+                  minWidth: { xs: 36, sm: 40 },
                   color: location.pathname === item.path ? 'white' : 'inherit',
                 }}
               >
@@ -169,6 +195,7 @@ export default function Layout({ children }: LayoutProps) {
                 primary={item.text}
                 primaryTypographyProps={{
                   fontWeight: location.pathname === item.path ? 600 : 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
                 }}
               />
             </ListItemButton>
@@ -190,42 +217,73 @@ export default function Layout({ children }: LayoutProps) {
           backgroundColor: 'white',
           color: 'text.primary',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+          zIndex: theme.zIndex.drawer + 1,
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ px: { xs: 1, sm: 2 } }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ 
+              mr: { xs: 1, sm: 2 }, 
+              display: { sm: 'none' },
+              p: { xs: 0.5, sm: 1 }
+            }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+              fontWeight: 600
+            }}
+          >
             {menuItems.find(item => item.path === location.pathname)?.text || t('navigation.dashboard')}
           </Typography>
           
-          {/* Dark Mode Toggle */}
-          <IconButton
-            onClick={handleToggleDarkMode}
-            color="inherit"
-            sx={{ mr: 1 }}
-          >
-            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {/* Dark Mode Toggle */}
+            <IconButton
+              onClick={handleToggleDarkMode}
+              color="inherit"
+              sx={{ 
+                p: { xs: 0.5, sm: 1 },
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                }
+              }}
+            >
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+            
+            {/* Language Selector */}
+            <LanguageSelector />
+            
+            <IconButton
+              onClick={handleProfileMenuOpen}
+              sx={{ 
+                ml: 1,
+                p: { xs: 0.5, sm: 1 }
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  width: { xs: 28, sm: 32 }, 
+                  height: { xs: 28, sm: 32 }, 
+                  bgcolor: theme.palette.primary.main 
+                }}
+              >
+                <AccountCircleIcon />
+              </Avatar>
+            </IconButton>
+          </Stack>
           
-          {/* Language Selector */}
-          <LanguageSelector />
-          
-          <IconButton
-            onClick={handleProfileMenuOpen}
-            sx={{ ml: 2 }}
-          >
-            <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}>
-              <AccountCircleIcon />
-            </Avatar>
-          </IconButton>
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
@@ -307,9 +365,11 @@ export default function Layout({ children }: LayoutProps) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 1, sm: 2, md: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
+          mt: { xs: 7, sm: 8 },
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
         }}
       >
         {children}

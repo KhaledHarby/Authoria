@@ -55,7 +55,21 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("LocalDev", p =>
-		p.WithOrigins("http://localhost:5173", "http://localhost:3000")
+		p.WithOrigins(
+			"http://localhost:5173",  // Vite default
+			"http://localhost:3000",  // React default
+			"http://localhost:4173",  // Vite preview
+			"http://127.0.0.1:5173",  // Alternative localhost
+			"http://127.0.0.1:3000"   // Alternative localhost
+		)
+		 .AllowAnyHeader()
+		 .AllowAnyMethod()
+		 .AllowCredentials()
+		 .WithExposedHeaders("X-Request-Duration-Ms"));
+	
+	// More permissive policy for development debugging
+	options.AddPolicy("Development", p =>
+		p.SetIsOriginAllowed(origin => true) // Allow any origin but compatible with credentials
 		 .AllowAnyHeader()
 		 .AllowAnyMethod()
 		 .AllowCredentials()
@@ -110,7 +124,17 @@ else
     app.MapGet("/", () => Results.Ok(new { status = "Authoria API running" }));
 }
 
-app.UseCors("LocalDev");
+// Use appropriate CORS policy based on environment
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("Development");
+    Console.WriteLine("Using Development CORS policy (AllowAnyOrigin)");
+}
+else
+{
+    app.UseCors("LocalDev");
+    Console.WriteLine("Using LocalDev CORS policy (specific origins)");
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

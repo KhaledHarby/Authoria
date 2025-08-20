@@ -14,6 +14,7 @@ public class User
 
 	public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 	public ICollection<UserTenant> UserTenants { get; set; } = new List<UserTenant>();
+	public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
 }
 
 

@@ -31,6 +31,13 @@ import {
   Alert,
   CircularProgress,
   useTheme,
+  Tabs,
+  Tab,
+  Divider,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -41,12 +48,16 @@ import {
   Visibility as VisibilityIcon,
   FilterList as FilterIcon,
   SupervisorAccount,
+  Security as SecurityIcon,
+  RemoveCircle as RemoveIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import Layout from '../../ui/Layout';
 import Pagination from '../../ui/Pagination';
 import SearchBar from '../../ui/SearchBar';
 import CheckboxGroup from '../../ui/CheckboxGroup';
 import http from '../../api/http';
+import { userPermissionsApi, type UserPermissionsResponse, type UserPermission, type RolePermission } from '../../api/userPermissionsApi';
 
 // User interface
 interface User {
@@ -62,6 +73,12 @@ interface User {
 interface Role {
   id: string;
   name: string;
+}
+
+interface Permission {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 interface PaginationResponse<T> {
@@ -82,7 +99,7 @@ export default function UsersPage() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [dialogType, setDialogType] = useState<'create' | 'view' | 'edit' | 'delete' | 'assign-role'>('view');
+  const [dialogType, setDialogType] = useState<'create' | 'view' | 'edit' | 'delete' | 'assign-role' | 'manage-permissions'>('view');
   const [newUser, setNewUser] = useState({
     firstName: '',
     lastName: '',
@@ -99,277 +116,141 @@ export default function UsersPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Edit dialog state
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', status: 'Active' });
+  // Role management state
   const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
 
-  // Load users on component mount and when pagination changes
-  useEffect(() => {
-    loadUsers();
-  }, [currentPage, pageSize, searchTerm]);
+  // Permission management state
+  const [userPermissions, setUserPermissions] = useState<UserPermissionsResponse | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
+  const [permissionTabValue, setPermissionTabValue] = useState(0);
+  const [permissionNotes, setPermissionNotes] = useState('');
 
+  // Load users
   const loadUsers = async () => {
     try {
       setPageLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: pageSize.toString(),
-        ...(searchTerm && { searchTerm }),
-      });
-      
-      const response = await http.get(`/api/users?${params}`);
+      const response = await http.get(`/api/users?page=${currentPage}&pageSize=${pageSize}&searchTerm=${searchTerm}`);
       const data: PaginationResponse<User> = response.data;
-      
       setUsers(data.items);
-      setTotalCount(data.totalCount);
       setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (err: any) {
-      setError('Failed to load users: ' + (err.response?.data?.message || err.message));
+      setError(err.response?.data?.message || 'Failed to load users');
     } finally {
       setPageLoading(false);
     }
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: User) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedUser(user);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedUser(null);
-  };
-
-  const handleAction = (action: 'view' | 'edit' | 'delete' | 'assign-role') => {
-    setDialogType(action);
-    setOpenDialog(true);
-    
-    if (action === 'edit' && selectedUser) {
-      // Initialize edit form with current user values
-      setEditForm({
-        firstName: selectedUser.firstName,
-        lastName: selectedUser.lastName,
-        status: selectedUser.status || 'Active',
-      });
-      // Set current roles as selected
-      const currentRoleIds = selectedUser.userRoles?.map(ur => ur.roleId).filter(Boolean) || [];
-      setSelectedRoleIds(currentRoleIds);
-      // Load roles for assignment
-      void loadRoles();
-    }
-    
-    if (action === 'assign-role' && selectedUser) {
-      // Set current roles as selected
-      const currentRoleIds = selectedUser.userRoles?.map(ur => ur.roleId).filter(Boolean) || [];
-      setSelectedRoleIds(currentRoleIds);
-      // Load roles for assignment
-      void loadRoles();
-    }
-    
-    // Don't close the menu immediately - let the dialog handle it
-    setAnchorEl(null);
-  };
-
+  // Load roles
   const loadRoles = async () => {
     try {
-      const res = await http.get('/api/roles?pageSize=100'); // Get all roles for dropdown
-      const data: PaginationResponse<Role> = res.data;
-      setRoles(data.items);
-    } catch (err) {
-      // ignore silently in UI; roles section will be empty
+      const response = await http.get('/api/roles');
+      setRoles(response.data.items || response.data);
+    } catch (err: any) {
+      console.error('Failed to load roles:', err);
     }
   };
 
-  const handleUpdateUser = async () => {
-    if (!selectedUser) return;
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    
+  // Load permissions
+  const loadPermissions = async () => {
     try {
-      // Update user basic information
-      await http.put(`/api/users/${selectedUser.id}`, {
-        firstName: editForm.firstName,
-        lastName: editForm.lastName,
-        status: editForm.status,
-      });
-      
-      // Handle multiple role assignments
-      const currentRoleIds = selectedUser.userRoles?.map(ur => ur.roleId).filter(Boolean) || [];
-      const hasRoleChanges = JSON.stringify(currentRoleIds.sort()) !== JSON.stringify(selectedRoleIds.sort());
-      
-      if (hasRoleChanges) {
-        // Remove all current roles first
-        for (const currentRoleId of currentRoleIds) {
-          if (currentRoleId) {
-            await http.delete(`/api/roles/assign/${selectedUser.id}/${currentRoleId}`);
-          }
-        }
-        
-        // Assign new roles
-        for (const roleId of selectedRoleIds) {
-          if (roleId) {
-            await http.post(`/api/roles/assign/${selectedUser.id}/${roleId}`);
-          }
-        }
-        
-        const roleCount = selectedRoleIds.length;
-        if (roleCount === 0) {
-          setSuccess('User updated and all roles removed successfully!');
-        } else if (roleCount === 1) {
-          setSuccess('User updated and role assigned successfully!');
-        } else {
-          setSuccess(`User updated and ${roleCount} roles assigned successfully!`);
-        }
-      } else {
-        setSuccess('User updated successfully!');
-      }
-      
-      await loadUsers();
-      setTimeout(() => {
-        handleDialogClose();
-      }, 1200);
+      const response = await http.get('/api/permissions');
+      setPermissions(response.data.items || response.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update user. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Failed to load permissions:', err);
     }
   };
 
-  const handleAssignRole = async () => {
-    if (!selectedUser || !selectedRoleId) return;
-    setLoading(true);
-    setError('');
-    setSuccess('');
+  // Load user permissions
+  const loadUserPermissions = async (userId: string) => {
     try {
-      await http.post(`/api/roles/assign/${selectedUser.id}/${selectedRoleId}`);
-      setSuccess('Role assigned to user successfully!');
-      // Optionally reload users
-      await loadUsers();
+      const data = await userPermissionsApi.getUserPermissions(userId);
+      setUserPermissions(data);
+      setSelectedPermissionIds(data.directPermissions.map(p => p.permissionId));
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to assign role.');
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.message || 'Failed to load user permissions');
     }
   };
 
-  const handleAssignRoleFromDialog = async () => {
-    if (!selectedUser) {
-      setError('Please select a user');
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      // Remove all current roles first
-      const currentRoleIds = selectedUser.userRoles?.map(ur => ur.role?.id).filter(Boolean) || [];
-      for (const currentRoleId of currentRoleIds) {
-        if (currentRoleId) {
-          await http.delete(`/api/roles/assign/${selectedUser.id}/${currentRoleId}`);
-        }
-      }
-      
-      // Assign new roles
-      for (const roleId of selectedRoleIds) {
-        if (roleId) {
-          await http.post(`/api/roles/assign/${selectedUser.id}/${roleId}`);
-        }
-      }
-      
-      const roleCount = selectedRoleIds.length;
-      if (roleCount === 0) {
-        setSuccess('All roles removed from user successfully!');
-      } else if (roleCount === 1) {
-        setSuccess('Role assigned to user successfully!');
-      } else {
-        setSuccess(`${roleCount} roles assigned to user successfully!`);
-      }
-      
-      await loadUsers();
-      
-      // Close dialog after a short delay
-      setTimeout(() => {
-        handleDialogClose();
-      }, 1500);
-      
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to assign roles. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    loadUsers();
+  }, [currentPage, pageSize, searchTerm]);
+
+  useEffect(() => {
+    loadRoles();
+    loadPermissions();
+  }, []);
 
   const handleOpenCreateDialog = () => {
     setDialogType('create');
+    setNewUser({ firstName: '', lastName: '', email: '', password: '', status: 'Active' });
+    setError('');
+    setSuccess('');
     setOpenDialog(true);
-    setNewUser({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      status: 'Active'
-    });
+  };
+
+  const handleOpenDialog = (user: User, type: 'view' | 'edit' | 'delete' | 'assign-role' | 'manage-permissions') => {
+    setSelectedUser(user);
+    setDialogType(type);
+    setError('');
+    setSuccess('');
+    
+    if (type === 'assign-role') {
+      setSelectedRoleIds(user.userRoles?.map(ur => ur.roleId) || []);
+    } else if (type === 'manage-permissions') {
+      loadUserPermissions(user.id);
+      setPermissionTabValue(0);
+      setPermissionNotes('');
+    }
+    
+    setOpenDialog(true);
   };
 
   const handleDialogClose = () => {
     setOpenDialog(false);
     setSelectedUser(null);
-    setNewUser({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      status: 'Active'
-    });
-    setEditForm({
-      firstName: '',
-      lastName: '',
-      status: 'Active'
-    });
-    setSelectedRoleId('');
-    setSelectedRoleIds([]);
     setError('');
     setSuccess('');
   };
 
-  const handleCreateUser = async () => {
-    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.password) {
-      setError('Please fill in all required fields');
-      return;
+  const handleAction = (action: 'view' | 'edit' | 'delete' | 'assign-role' | 'manage-permissions') => {
+    if (selectedUser) {
+      handleOpenDialog(selectedUser, action);
     }
+  };
 
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
+  const handleCreateUser = async () => {
     try {
-      const response = await http.post('/api/users', {
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        email: newUser.email,
-        password: newUser.password
-      });
-
-      setSuccess('User created successfully!');
-      
-      // Refresh the users list
-      await loadUsers();
-      
-      // Close dialog after a short delay
-      setTimeout(() => {
-        handleDialogClose();
-      }, 1500);
-      
+      setLoading(true);
+      setError('');
+      await http.post('/api/users', newUser);
+      setSuccess('User created successfully');
+      loadUsers();
+      handleDialogClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create user. Please try again.');
+      setError(err.response?.data?.message || 'Failed to create user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      await http.put(`/api/users/${selectedUser.id}`, newUser);
+      setSuccess('User updated successfully');
+      loadUsers();
+      handleDialogClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update user');
     } finally {
       setLoading(false);
     }
@@ -377,31 +258,99 @@ export default function UsersPage() {
 
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
+    
     try {
+      setLoading(true);
+      setError('');
       await http.delete(`/api/users/${selectedUser.id}`);
-      setSuccess('User deleted successfully!');
-      
-      // Refresh the users list
-      await loadUsers();
-      
-      // Close dialog after a short delay
-      setTimeout(() => {
-        handleDialogClose();
-      }, 1500);
-      
+      setSuccess('User deleted successfully');
+      loadUsers();
+      handleDialogClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete user. Please try again.');
+      setError(err.response?.data?.message || 'Failed to delete user');
     } finally {
       setLoading(false);
     }
   };
 
-    // Pagination handlers
+  const handleAssignRoleFromDialog = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      await http.post(`/api/users/${selectedUser.id}/roles`, { roleIds: selectedRoleIds });
+      setSuccess('Roles assigned successfully');
+      loadUsers();
+      handleDialogClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to assign roles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignPermission = async () => {
+    if (!selectedUser || !permissionNotes.trim()) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Get the first selected permission that's not already assigned
+      const availablePermissions = permissions.filter(p => 
+        !userPermissions?.directPermissions.some(dp => dp.permissionId === p.id)
+      );
+      
+      if (availablePermissions.length === 0) {
+        setError('No available permissions to assign');
+        return;
+      }
+      
+      const permissionToAssign = availablePermissions[0];
+      
+      await userPermissionsApi.assignPermission({
+        userId: selectedUser.id,
+        permissionId: permissionToAssign.id,
+        notes: permissionNotes
+      });
+      
+      setSuccess('Permission assigned successfully');
+      setPermissionNotes('');
+      if (selectedUser) {
+        loadUserPermissions(selectedUser.id);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to assign permission');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemovePermission = async (permissionId: string) => {
+    if (!selectedUser) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      
+      await userPermissionsApi.removePermission({
+        userId: selectedUser.id,
+        permissionId: permissionId
+      });
+      
+      setSuccess('Permission removed successfully');
+      if (selectedUser) {
+        loadUserPermissions(selectedUser.id);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to remove permission');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Pagination handlers
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -482,32 +431,32 @@ export default function UsersPage() {
                   onChange={handleSearchChange}
                   placeholder="Search users by name or email..."
                   showFilters={true}
-                                        filters={[
-                        {
-                          label: 'Role',
-                          value: filterRole,
-                          options: [
-                            { label: 'All Roles', value: '' },
-                            { label: 'Admin', value: 'Admin' },
-                            { label: 'Manager', value: 'Manager' },
-                            { label: 'User', value: 'User' },
-                            { label: 'Auditor', value: 'Auditor' },
-                            { label: 'Developer', value: 'Developer' }
-                          ],
-                          onChange: setFilterRole
-                        },
+                  filters={[
+                    {
+                      label: 'Role',
+                      value: filterRole,
+                      options: [
+                        { label: 'All Roles', value: '' },
+                        { label: 'Admin', value: 'Admin' },
+                        { label: 'Manager', value: 'Manager' },
+                        { label: 'User', value: 'User' },
+                        { label: 'Auditor', value: 'Auditor' },
+                        { label: 'Developer', value: 'Developer' }
+                      ],
+                      onChange: setFilterRole
+                    },
                     {
                       label: 'Status',
                       value: filterStatus,
                       options: [
-                        { label: 'All Status', value: '' },
+                        { label: 'All Statuses', value: '' },
                         { label: 'Active', value: 'Active' },
-                        { label: 'Inactive', value: 'Inactive' }
+                        { label: 'Inactive', value: 'Inactive' },
+                        { label: 'Locked', value: 'Locked' }
                       ],
                       onChange: setFilterStatus
                     }
                   ]}
-                  loading={pageLoading}
                 />
               </Box>
             </Box>
@@ -518,337 +467,472 @@ export default function UsersPage() {
         <Card>
           <CardContent>
             {pageLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <Box display="flex" justifyContent="center" p={4}>
                 <CircularProgress />
               </Box>
             ) : (
-              <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600 }}>User</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Role</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Last Login</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                    <TableRow key={user.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                            {`${user.firstName[0]}${user.lastName[0]}`}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                              {`${user.firstName} ${user.lastName}`}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                              {user.email}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {user.userRoles && user.userRoles.length > 0 ? (
-                            user.userRoles.map((userRole, index) => (
-                              <Chip
-                                key={userRole.roleId || index}
-                                label={userRole.roleName || 'Unknown Role'}
-                                color={getRoleColor(userRole.roleName) as any}
-                                size="small"
-                                sx={{ fontSize: '0.75rem' }}
-                              />
-                            ))
-                          ) : (
+              <>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>User</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Roles</TableCell>
+                        <TableCell>Last Login</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                              </Avatar>
+                              <Box>
+                                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                  {user.firstName} {user.lastName}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
                             <Chip
-                              label="No Role"
-                              color="default"
+                              label={user.status}
+                              color={getStatusColor(user.status) as any}
                               size="small"
-                              variant="outlined"
                             />
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.status}
-                          color={getStatusColor(user.status) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          {user.lastLoginAtUtc ? new Date(user.lastLoginAtUtc).toLocaleString() : 'Never'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <IconButton
-                          onClick={(e) => handleMenuOpen(e, user)}
-                          size="small"
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {user.userRoles?.map((role) => (
+                                <Chip
+                                  key={role.roleId}
+                                  label={role.roleName}
+                                  color={getRoleColor(role.roleName) as any}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )) || <Typography variant="body2" color="text.secondary">No roles</Typography>}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {user.lastLoginAtUtc ? (
+                              <Typography variant="body2">
+                                {new Date(user.lastLoginAtUtc).toLocaleDateString()}
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Never
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              onClick={(e) => {
+                                setAnchorEl(e.currentTarget);
+                                setSelectedUser(user);
+                              }}
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pageSize={pageSize}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              </>
             )}
           </CardContent>
         </Card>
-
-        {/* Pagination */}
-        {!pageLoading && totalCount > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
-        )}
 
         {/* Action Menu */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          PaperProps={{
-            sx: {
-              minWidth: 150,
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            },
-          }}
+          onClose={() => setAnchorEl(null)}
         >
-          <MenuItem onClick={() => handleAction('view')}>
+          <MenuItem onClick={() => { setAnchorEl(null); handleAction('view'); }}>
             <ListItemIcon>
               <VisibilityIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>View Details</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleAction('edit')}>
+          <MenuItem onClick={() => { setAnchorEl(null); handleAction('edit'); }}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Edit User</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleAction('assign-role')}>
+          <MenuItem onClick={() => { setAnchorEl(null); handleAction('assign-role'); }}>
             <ListItemIcon>
               <SupervisorAccount fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Assign Role</ListItemText>
+            <ListItemText>Assign Roles</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleAction('delete')} sx={{ color: 'error.main' }}>
+          <MenuItem onClick={() => { setAnchorEl(null); handleAction('manage-permissions'); }}>
             <ListItemIcon>
-              <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+              <SecurityIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Manage Permissions</ListItemText>
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={() => { setAnchorEl(null); handleAction('delete'); }}>
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Delete User</ListItemText>
           </MenuItem>
         </Menu>
 
         {/* Dialog */}
-        <Dialog open={openDialog} onClose={handleDialogClose} maxWidth="sm" fullWidth>
-                  <DialogTitle>
-          {dialogType === 'create' && 'Create New User'}
-          {dialogType === 'view' && 'User Details'}
-          {dialogType === 'edit' && 'Edit User'}
-          {dialogType === 'delete' && 'Delete User'}
-          {dialogType === 'assign-role' && 'Assign Role'}
-        </DialogTitle>
+        <Dialog open={openDialog} onClose={handleDialogClose} maxWidth="md" fullWidth>
+          <DialogTitle>
+            {dialogType === 'create' && 'Create New User'}
+            {dialogType === 'view' && `User Details - ${selectedUser?.firstName} ${selectedUser?.lastName}`}
+            {dialogType === 'edit' && `Edit User - ${selectedUser?.firstName} ${selectedUser?.lastName}`}
+            {dialogType === 'delete' && 'Delete User'}
+            {dialogType === 'assign-role' && 'Assign Role'}
+            {dialogType === 'manage-permissions' && 'Manage Permissions'}
+          </DialogTitle>
           <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {success}
+              </Alert>
+            )}
+
             {dialogType === 'create' && (
-              <Box sx={{ pt: 1 }}>
-                {error && (
-                  <Alert severity="error" sx={{ mb: 3 }}>
-                    {error}
-                  </Alert>
-                )}
-                {success && (
-                  <Alert severity="success" sx={{ mb: 3 }}>
-                    {success}
-                  </Alert>
-                )}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                 <TextField
-                  fullWidth
                   label="First Name"
                   value={newUser.firstName}
                   onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
+                  fullWidth
+                  required
                 />
                 <TextField
-                  fullWidth
                   label="Last Name"
                   value={newUser.lastName}
                   onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
+                  fullWidth
+                  required
                 />
                 <TextField
-                  fullWidth
                   label="Email"
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
+                  fullWidth
+                  required
                 />
                 <TextField
-                  fullWidth
                   label="Password"
                   type="password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  sx={{ mb: 3 }}
-                  disabled={loading}
+                  fullWidth
+                  required
                 />
+                <FormControl fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={newUser.status}
+                    onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}
+                    label="Status"
+                  >
+                    <MenuItem value="Active">Active</MenuItem>
+                    <MenuItem value="Inactive">Inactive</MenuItem>
+                    <MenuItem value="Locked">Locked</MenuItem>
+                  </Select>
+                </FormControl>
               </Box>
             )}
-            {selectedUser && (
-              <Box>
-                {dialogType === 'view' && (
+
+            {dialogType === 'view' && selectedUser && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="h6" gutterBottom>User Information</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
                   <Box>
+                    <Typography variant="body2" color="text.secondary">Name</Typography>
+                    <Typography variant="body1">{selectedUser.firstName} {selectedUser.lastName}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Email</Typography>
+                    <Typography variant="body1">{selectedUser.email}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Status</Typography>
+                    <Chip label={selectedUser.status} color={getStatusColor(selectedUser.status) as any} size="small" />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">Last Login</Typography>
                     <Typography variant="body1">
-                      <strong>Name:</strong> {`${selectedUser.firstName} ${selectedUser.lastName}`}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Email:</strong> {selectedUser.email}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Role:</strong> {selectedUser.userRoles?.[0]?.role?.name || 'No Role'}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Status:</strong> {selectedUser.status}
+                      {selectedUser.lastLoginAtUtc ? new Date(selectedUser.lastLoginAtUtc).toLocaleString() : 'Never'}
                     </Typography>
                   </Box>
-                )}
-                {dialogType === 'edit' && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    {error && (
-                      <Alert severity="error">{error}</Alert>
-                    )}
-                    {success && (
-                      <Alert severity="success">{success}</Alert>
-                    )}
-                    <TextField
-                      fullWidth
-                      label="First Name"
-                      value={editForm.firstName}
-                      onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
-                      disabled={loading}
+                </Box>
+                
+                <Typography variant="h6" gutterBottom>Roles</Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {selectedUser.userRoles?.map((role) => (
+                    <Chip
+                      key={role.roleId}
+                      label={role.roleName}
+                      color={getRoleColor(role.roleName) as any}
+                      variant="outlined"
                     />
-                    <TextField
-                      fullWidth
-                      label="Last Name"
-                      value={editForm.lastName}
-                      onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
-                      disabled={loading}
-                    />
-                    <TextField fullWidth label="Email" value={selectedUser.email} disabled />
-                    <FormControl fullWidth>
-                      <InputLabel>Status</InputLabel>
-                      <Select
-                        label="Status"
-                        value={editForm.status}
-                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as string })}
-                        disabled={loading}
-                      >
-                        <MenuItem value="Active">Active</MenuItem>
-                        <MenuItem value="Inactive">Inactive</MenuItem>
-                      </Select>
-                    </FormControl>
+                  )) || <Typography variant="body2" color="text.secondary">No roles assigned</Typography>}
+                </Box>
+              </Box>
+            )}
 
-                    <Box>
-                      <Typography variant="h6" sx={{ mb: 1 }}>Role Assignment</Typography>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
-                          Current Roles: {selectedUser.userRoles?.map(ur => ur.role?.name).join(', ') || 'No Roles Assigned'}
-                        </Typography>
-                      </Box>
-                      
-                      <CheckboxGroup
-                        title="Select Roles"
-                        options={[
-                          { value: '', label: 'No Role', description: 'Remove all role assignments' },
-                          ...roles.map(role => ({
-                            value: role.id,
-                            label: role.name,
-                            description: role.description || `Assign ${role.name} role`,
-                            chip: {
-                              label: role.name,
-                              color: getRoleColor(role.name) as any,
-                              variant: 'outlined'
-                            }
-                          }))
-                        ]}
-                        selectedValues={selectedRoleIds}
-                        onSelectionChange={setSelectedRoleIds}
-                        maxHeight={250}
-                        showCheckAll={true}
-                        showChips={true}
-                        dense={true}
-                      />
-                      
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-                        Select one or more roles to assign to this user. Multiple roles can be assigned.
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
-                {dialogType === 'delete' && (
-                  <Typography variant="body1">
-                    Are you sure you want to delete user "{`${selectedUser.firstName} ${selectedUser.lastName}`}"? This action cannot be undone.
+            {dialogType === 'edit' && selectedUser && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                <TextField
+                  label="First Name"
+                  value={newUser.firstName}
+                  onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Last Name"
+                  value={newUser.lastName}
+                  onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Password (leave blank to keep current)"
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  fullWidth
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={newUser.status}
+                    onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}
+                    label="Status"
+                  >
+                    <MenuItem value="Active">Active</MenuItem>
+                    <MenuItem value="Inactive">Inactive</MenuItem>
+                    <MenuItem value="Locked">Locked</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+
+            {dialogType === 'delete' && (
+              <Typography variant="body1">
+                Are you sure you want to delete user "{`${selectedUser.firstName} ${selectedUser.lastName}`}"? This action cannot be undone.
+              </Typography>
+            )}
+
+            {dialogType === 'assign-role' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Assign Roles to {selectedUser.firstName} {selectedUser.lastName}
                   </Typography>
-                )}
-                {dialogType === 'assign-role' && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    {error && (
-                      <Alert severity="error">{error}</Alert>
-                    )}
-                    {success && (
-                      <Alert severity="success">{success}</Alert>
-                    )}
-                    
-                    <Box>
-                      <Typography variant="h6" sx={{ mb: 2 }}>
-                        Assign Roles to {selectedUser.firstName} {selectedUser.lastName}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-                        Current Roles: {selectedUser.userRoles?.map(ur => ur.role?.name).join(', ') || 'No Roles Assigned'}
-                      </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                    Current Roles: {selectedUser.userRoles?.map(ur => ur.roleName).join(', ') || 'No Roles Assigned'}
+                  </Typography>
+                </Box>
+
+                <CheckboxGroup
+                  title="Select Roles"
+                  options={[
+                    { value: '', label: 'No Role', description: 'Remove all role assignments' },
+                                         ...roles.map(role => ({
+                       value: role.id,
+                       label: role.name,
+                       description: `Assign ${role.name} role`,
+                       chip: {
+                         label: role.name,
+                         color: getRoleColor(role.name) as any,
+                         variant: 'outlined' as const
+                       }
+                     }))
+                  ]}
+                  selectedValues={selectedRoleIds}
+                  onSelectionChange={setSelectedRoleIds}
+                  maxHeight={250}
+                  showCheckAll={true}
+                  showChips={true}
+                  dense={true}
+                />
+
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  Select one or more roles to assign to this user. Multiple roles can be assigned.
+                </Typography>
+              </Box>
+            )}
+
+            {dialogType === 'manage-permissions' && userPermissions && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Manage Permissions for {userPermissions.userName}
+                </Typography>
+
+                <Tabs value={permissionTabValue} onChange={(e, newValue) => setPermissionTabValue(newValue)} sx={{ mb: 3 }}>
+                  <Tab label="Direct Permissions" />
+                  <Tab label="Role Permissions" />
+                  <Tab label="All Permissions" />
+                </Tabs>
+
+                {permissionTabValue === 0 && (
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Typography variant="subtitle1">Direct Permissions</Typography>
+                      <Tooltip title="Direct permissions are assigned specifically to this user, independent of their roles">
+                        <InfoIcon fontSize="small" color="action" />
+                      </Tooltip>
                     </Box>
+                    
+                    {userPermissions.directPermissions.length > 0 ? (
+                      <List>
+                        {userPermissions.directPermissions.map((permission) => (
+                          <ListItem key={permission.id} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 }}>
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                {permission.permissionName}
+                              </Typography>
+                              {permission.permissionDescription && (
+                                <Typography variant="body2" color="text.secondary">
+                                  {permission.permissionDescription}
+                                </Typography>
+                              )}
+                              <Typography variant="caption" color="text.secondary">
+                                Granted by: {permission.grantedByUserName || 'System'} on {new Date(permission.grantedAtUtc).toLocaleDateString()}
+                              </Typography>
+                              {permission.notes && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Notes: {permission.notes}
+                                </Typography>
+                              )}
+                            </Box>
+                            <ListItemSecondaryAction>
+                              <IconButton
+                                edge="end"
+                                onClick={() => handleRemovePermission(permission.permissionId)}
+                                disabled={loading}
+                                color="error"
+                              >
+                                <RemoveIcon />
+                              </IconButton>
+                            </ListItemSecondaryAction>
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                        No direct permissions assigned
+                      </Typography>
+                    )}
 
-                    <CheckboxGroup
-                      title="Select Roles"
-                      options={[
-                        { value: '', label: 'No Role', description: 'Remove all role assignments' },
-                        ...roles.map(role => ({
-                          value: role.id,
-                          label: role.name,
-                          description: role.description || `Assign ${role.name} role`,
-                          chip: {
-                            label: role.name,
-                            color: getRoleColor(role.name) as any,
-                            variant: 'outlined'
-                          }
-                        }))
-                      ]}
-                      selectedValues={selectedRoleIds}
-                      onSelectionChange={setSelectedRoleIds}
-                      maxHeight={250}
-                      showCheckAll={true}
-                      showChips={true}
-                      dense={true}
-                    />
+                    <Divider sx={{ my: 3 }} />
+                    
+                    <Typography variant="subtitle1" sx={{ mb: 2 }}>Assign New Permission</Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                      <TextField
+                        label="Notes (optional)"
+                        value={permissionNotes}
+                        onChange={(e) => setPermissionNotes(e.target.value)}
+                        placeholder="Reason for granting this permission..."
+                        fullWidth
+                        multiline
+                        rows={2}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleAssignPermission}
+                        disabled={loading || !permissionNotes.trim()}
+                        startIcon={<AddIcon />}
+                      >
+                        {loading ? 'Assigning...' : 'Assign Permission'}
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
 
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      Select one or more roles to assign to this user. Multiple roles can be assigned.
+                {permissionTabValue === 1 && (
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ mb: 2 }}>Permissions from Roles</Typography>
+                    {userPermissions.rolePermissions.length > 0 ? (
+                      <List>
+                        {userPermissions.rolePermissions.map((role) => (
+                          <ListItem key={role.roleId} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, mb: 1 }}>
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography variant="body1" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                {role.roleName} Role
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+                                {role.permissions.map((permission) => (
+                                  <Chip
+                                    key={permission}
+                                    label={permission}
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                        No role permissions available
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
+                {permissionTabValue === 2 && (
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ mb: 2 }}>All Permissions (Combined)</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {userPermissions.allPermissions.map((permission) => (
+                        <Chip
+                          key={permission}
+                          label={permission}
+                          size="small"
+                          color="primary"
+                        />
+                      ))}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                      This shows all permissions the user has access to, whether through roles or direct assignments.
                     </Typography>
                   </Box>
                 )}

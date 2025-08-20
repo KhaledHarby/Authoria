@@ -15,11 +15,24 @@ public class AuthController : ControllerBase
 	[HttpGet("health")]
 	public IActionResult Health() => Ok(new { status = "ok" });
 
+	[HttpGet("cors-test")]
+	public IActionResult CorsTest() => Ok(new { message = "CORS is working!", timestamp = DateTime.UtcNow });
+
 	[HttpPost("login")]
 	public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest req)
 	{
-		var resp = await _auth.LoginAsync(req, Request.Headers.UserAgent, HttpContext.Connection.RemoteIpAddress?.ToString());
-		return resp == null ? Unauthorized() : Ok(resp);
+		try
+		{
+			Console.WriteLine($"Login attempt for user: {req.Email}");
+			var resp = await _auth.LoginAsync(req, Request.Headers.UserAgent, HttpContext.Connection.RemoteIpAddress?.ToString());
+			Console.WriteLine($"Login result: {(resp == null ? "Failed" : "Success")}");
+			return resp == null ? Unauthorized() : Ok(resp);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Login error: {ex.Message}");
+			return StatusCode(500, new { error = "Internal server error" });
+		}
 	}
 
 	[HttpPost("refresh")]

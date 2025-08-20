@@ -11,6 +11,9 @@ import {
   Button,
   Tooltip,
   Divider,
+  useTheme,
+  useMediaQuery,
+  Stack,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -50,6 +53,10 @@ export default function SearchBar({
   loading = false,
   debounceMs = 300,
 }: SearchBarProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -94,7 +101,7 @@ export default function SearchBar({
         sx={{
           border: '1px solid',
           borderColor: 'divider',
-          borderRadius: 2,
+          borderRadius: { xs: 1, sm: 2 },
           backgroundColor: 'background.paper',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
@@ -107,15 +114,19 @@ export default function SearchBar({
           },
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Stack 
+            direction={isMobile ? "column" : "row"} 
+            spacing={1} 
+            alignItems={isMobile ? "stretch" : "center"}
+          >
             <TextField
               fullWidth
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
               variant="outlined"
-              size="small"
+              size={isMobile ? "medium" : "small"}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               InputProps={{
@@ -124,6 +135,7 @@ export default function SearchBar({
                     <SearchIcon 
                       sx={{ 
                         color: loading ? 'primary.main' : 'text.secondary',
+                        fontSize: { xs: '1.25rem', sm: '1.125rem' },
                         animation: loading ? 'pulse 1.5s infinite' : 'none',
                         '@keyframes pulse': {
                           '0%': { opacity: 1 },
@@ -138,9 +150,12 @@ export default function SearchBar({
                   <InputAdornment position="end">
                     <Tooltip title="Clear search">
                       <IconButton
-                        size="small"
+                        size={isMobile ? "medium" : "small"}
                         onClick={handleClear}
-                        sx={{ color: 'text.secondary' }}
+                        sx={{ 
+                          color: 'text.secondary',
+                          p: { xs: 1, sm: 0.5 }
+                        }}
                       >
                         <ClearIcon />
                       </IconButton>
@@ -152,8 +167,9 @@ export default function SearchBar({
                     border: 'none',
                   },
                   '& .MuiInputBase-input': {
-                    fontSize: '0.875rem',
+                    fontSize: { xs: '1rem', sm: '0.875rem' },
                     fontWeight: 500,
+                    py: { xs: 1.5, sm: 1 },
                   },
                 },
               }}
@@ -166,35 +182,45 @@ export default function SearchBar({
                   sx={{
                     color: activeFiltersCount > 0 ? 'primary.main' : 'text.secondary',
                     backgroundColor: activeFiltersCount > 0 ? 'primary.light' : 'transparent',
+                    p: { xs: 1.5, sm: 1 },
+                    minWidth: { xs: 'auto', sm: '40px' },
+                    minHeight: { xs: '48px', sm: '40px' },
                     '&:hover': {
                       backgroundColor: 'primary.light',
                       color: 'primary.contrastText',
                     },
                   }}
                 >
-                  <FilterIcon />
+                  <FilterIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.125rem' } }} />
                 </IconButton>
               </Tooltip>
             )}
-          </Box>
+          </Stack>
 
           {/* Active Filters Display */}
           {activeFiltersCount > 0 && (
-            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ 
+              mt: { xs: 1.5, sm: 1 }, 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: { xs: 0.75, sm: 1 } 
+            }}>
               {filters.map((filter, index) => 
                 filter.value && (
                   <Chip
                     key={index}
                     label={`${filter.label}: ${filter.options.find(opt => opt.value === filter.value)?.label || filter.value}`}
-                    size="small"
+                    size={isMobile ? "medium" : "small"}
                     onDelete={() => handleFilterChange(index, '')}
                     deleteIcon={<CloseIcon />}
                     sx={{
                       backgroundColor: 'primary.light',
                       color: 'primary.contrastText',
-                      fontSize: '0.75rem',
+                      fontSize: { xs: '0.875rem', sm: '0.75rem' },
+                      height: { xs: '32px', sm: '24px' },
                       '& .MuiChip-deleteIcon': {
                         color: 'primary.contrastText',
+                        fontSize: { xs: '1.125rem', sm: '1rem' },
                         '&:hover': {
                           color: 'error.light',
                         },
@@ -208,25 +234,49 @@ export default function SearchBar({
 
           {/* Filters Panel */}
           <Collapse in={showFiltersPanel}>
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  color: 'text.primary',
+                  fontSize: { xs: '1rem', sm: '0.875rem' }
+                }}
+              >
                 Filters
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { 
+                  xs: '1fr', 
+                  sm: 'repeat(auto-fit, minmax(200px, 1fr))' 
+                }, 
+                gap: { xs: 1.5, sm: 2 } 
+              }}>
                 {filters.map((filter, index) => (
-                  <Box key={index} sx={{ minWidth: 200 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 500, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                  <Box key={index}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        fontWeight: 500, 
+                        color: 'text.secondary', 
+                        mb: 0.5, 
+                        display: 'block',
+                        fontSize: { xs: '0.875rem', sm: '0.75rem' }
+                      }}
+                    >
                       {filter.label}
                     </Typography>
                     <TextField
                       select
-                      size="small"
+                      size={isMobile ? "medium" : "small"}
                       value={filter.value}
                       onChange={(e) => handleFilterChange(index, e.target.value)}
+                      fullWidth
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          fontSize: '0.875rem',
+                          fontSize: { xs: '1rem', sm: '0.875rem' },
                         },
                       }}
                     >
@@ -256,11 +306,11 @@ export default function SearchBar({
             right: 0,
             zIndex: 1000,
             mt: 1,
-            maxHeight: 200,
+            maxHeight: { xs: 300, sm: 200 },
             overflow: 'auto',
             border: '1px solid',
             borderColor: 'divider',
-            borderRadius: 2,
+            borderRadius: { xs: 1, sm: 2 },
           }}
         >
           {suggestions.map((suggestion, index) => (
@@ -268,10 +318,13 @@ export default function SearchBar({
               key={index}
               onClick={() => handleSuggestionClick(suggestion)}
               sx={{
-                p: 1.5,
+                p: { xs: 2, sm: 1.5 },
                 cursor: 'pointer',
                 borderBottom: index < suggestions.length - 1 ? '1px solid' : 'none',
                 borderColor: 'divider',
+                minHeight: { xs: '48px', sm: '40px' },
+                display: 'flex',
+                alignItems: 'center',
                 '&:hover': {
                   backgroundColor: 'action.hover',
                 },
@@ -280,7 +333,13 @@ export default function SearchBar({
                 },
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '1rem', sm: '0.875rem' }
+                }}
+              >
                 {suggestion}
               </Typography>
             </Box>

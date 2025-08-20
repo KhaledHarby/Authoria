@@ -32,6 +32,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const theme = createTheme({
     direction: isRTL ? 'rtl' : 'ltr',
+    breakpoints: {
+      values: {
+        xs: 0,
+        sm: 600,
+        md: 900,
+        lg: 1200,
+        xl: 1536,
+      },
+    },
     palette: {
       mode: darkMode ? 'dark' : 'light',
       primary: {
@@ -60,27 +69,54 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         : '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
       h1: {
         fontWeight: 700,
-        fontSize: '2.5rem',
+        fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+        lineHeight: 1.2,
       },
       h2: {
         fontWeight: 600,
-        fontSize: '2rem',
+        fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+        lineHeight: 1.3,
       },
       h3: {
         fontWeight: 600,
-        fontSize: '1.5rem',
+        fontSize: 'clamp(1.125rem, 2.5vw, 1.5rem)',
+        lineHeight: 1.4,
       },
       h4: {
         fontWeight: 600,
-        fontSize: '1.25rem',
+        fontSize: 'clamp(1rem, 2vw, 1.25rem)',
+        lineHeight: 1.4,
       },
       h5: {
         fontWeight: 600,
-        fontSize: '1.125rem',
+        fontSize: 'clamp(0.875rem, 1.5vw, 1.125rem)',
+        lineHeight: 1.5,
       },
       h6: {
         fontWeight: 600,
-        fontSize: '1rem',
+        fontSize: 'clamp(0.75rem, 1.25vw, 1rem)',
+        lineHeight: 1.5,
+      },
+      body1: {
+        fontSize: 'clamp(0.875rem, 1vw, 1rem)',
+        lineHeight: 1.6,
+      },
+      body2: {
+        fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+        lineHeight: 1.6,
+      },
+      button: {
+        textTransform: 'none',
+        fontWeight: 600,
+        fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+      },
+      caption: {
+        fontSize: 'clamp(0.625rem, 0.75vw, 0.75rem)',
+        lineHeight: 1.5,
+      },
+      overline: {
+        fontSize: 'clamp(0.625rem, 0.75vw, 0.75rem)',
+        lineHeight: 1.5,
       },
     },
     shape: {
@@ -94,6 +130,27 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
             fontWeight: 600,
             borderRadius: 8,
             padding: '10px 24px',
+            fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+            '@media (max-width: 600px)': {
+              padding: '8px 16px',
+              fontSize: '0.75rem',
+            },
+          },
+          sizeSmall: {
+            padding: '6px 16px',
+            fontSize: 'clamp(0.625rem, 0.75vw, 0.75rem)',
+            '@media (max-width: 600px)': {
+              padding: '4px 12px',
+              fontSize: '0.625rem',
+            },
+          },
+          sizeLarge: {
+            padding: '12px 32px',
+            fontSize: 'clamp(0.875rem, 1vw, 1rem)',
+            '@media (max-width: 600px)': {
+              padding: '10px 24px',
+              fontSize: '0.875rem',
+            },
           },
         },
       },
@@ -102,6 +159,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
           root: {
             borderRadius: 16,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            '@media (max-width: 600px)': {
+              borderRadius: 12,
+            },
           },
         },
       },
@@ -109,6 +169,111 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         styleOverrides: {
           root: {
             borderRadius: 12,
+            '@media (max-width: 600px)': {
+              borderRadius: 8,
+            },
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiInputBase-root': {
+              fontSize: 'clamp(0.875rem, 1vw, 1rem)',
+              '@media (max-width: 600px)': {
+                fontSize: '0.875rem',
+              },
+            },
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+            padding: '12px 16px',
+            '@media (max-width: 600px)': {
+              fontSize: '0.75rem',
+              padding: '8px 12px',
+            },
+          },
+          head: {
+            fontWeight: 600,
+            fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+            '@media (max-width: 600px)': {
+              fontSize: '0.75rem',
+            },
+          },
+        },
+      },
+      MuiTableHead: {
+        styleOverrides: {
+          root: {
+            '& .MuiTableCell-head': {
+              backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
+            },
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            fontSize: 'clamp(0.625rem, 0.75vw, 0.75rem)',
+            height: 'auto',
+            '@media (max-width: 600px)': {
+              fontSize: '0.625rem',
+            },
+          },
+        },
+      },
+      MuiAvatar: {
+        styleOverrides: {
+          root: {
+            fontSize: 'clamp(0.75rem, 0.875vw, 0.875rem)',
+            '@media (max-width: 600px)': {
+              fontSize: '0.75rem',
+            },
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            '@media (max-width: 600px)': {
+              padding: 6,
+            },
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            margin: '2px 8px',
+            '@media (max-width: 600px)': {
+              margin: '1px 4px',
+              borderRadius: 6,
+            },
+          },
+        },
+      },
+      MuiListItemIcon: {
+        styleOverrides: {
+          root: {
+            minWidth: 40,
+            '@media (max-width: 600px)': {
+              minWidth: 36,
+            },
+          },
+        },
+      },
+      MuiListItemText: {
+        styleOverrides: {
+          primary: {
+            fontSize: 'clamp(0.875rem, 1vw, 1rem)',
+            '@media (max-width: 600px)': {
+              fontSize: '0.875rem',
+            },
           },
         },
       },

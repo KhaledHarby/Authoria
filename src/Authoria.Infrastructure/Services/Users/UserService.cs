@@ -110,91 +110,276 @@ public class UserService : IUserService
 
 	public async Task<UserDto?> GetAsync(Guid id, CancellationToken ct = default)
 	{
-		var u = await _db.Users
+		if (!_current.HasPermission("user.view")) throw new UnauthorizedAccessException("Missing permission: user.view");
+		
+		var user = await _db.Users
 			.AsNoTracking()
-			.Where(x => x.Id == id)
-			.Select(x => new UserDto
+			.Include(u => u.UserRoles)
+				.ThenInclude(ur => ur.Role)
+			.FirstOrDefaultAsync(u => u.Id == id, ct);
+		
+		if (user == null) return null;
+		
+		return new UserDto
+		{
+			Id = user.Id,
+			Email = user.Email,
+			FirstName = user.FirstName,
+			LastName = user.LastName,
+			Status = user.Status.ToString(),
+			LastLoginAtUtc = user.LastLoginAtUtc,
+			UserRoles = user.UserRoles.Select(ur => new UserRoleBriefDto
 			{
-				Id = x.Id,
-				Email = x.Email,
-				FirstName = x.FirstName,
-				LastName = x.LastName,
-				Status = x.Status.ToString(),
-				LastLoginAtUtc = x.LastLoginAtUtc,
-				UserRoles = x.UserRoles.Select(ur => new UserRoleBriefDto
-				{
-					RoleId = ur.RoleId,
-					RoleName = ur.Role.Name
-				}).ToList()
-			})
-			.FirstOrDefaultAsync(ct);
-		return u;
+				RoleId = ur.RoleId,
+				RoleName = ur.Role.Name
+			}).ToList()
+		};
 	}
 
 	public async Task<UserDto> CreateAsync(CreateUserRequest req, CancellationToken ct = default)
 	{
 		if (!_current.HasPermission("user.create")) throw new UnauthorizedAccessException("Missing permission: user.create");
-		if (string.IsNullOrWhiteSpace(req.Email)) throw new ArgumentException("Email required");
-		if (string.IsNullOrWhiteSpace(req.Password)) throw new ArgumentException("Password required");
 		
-		// Hash the password properly
-		var hashedPassword = _passwordHasher.HashPassword(req.Password);
+		var passwordHash = _passwordHasher.HashPassword(req.Password);
 		
-		var user = new User 
-		{ 
-			Id = Guid.NewGuid(), 
-			Email = req.Email, 
-			PasswordHash = hashedPassword, 
-			FirstName = req.FirstName, 
-			LastName = req.LastName, 
-			Status = UserStatus.Active 
+		var user = new User
+		{
+			Email = req.Email,
+			PasswordHash = passwordHash,
+			FirstName = req.FirstName,
+			LastName = req.LastName,
+			Status = UserStatus.Active
 		};
 		
 		_db.Users.Add(user);
 		await _db.SaveChangesAsync(ct);
 		
-		// Audit log the user creation
-		await _auditService.LogDatabaseOperationAsync("create", "user", user.Id.ToString(), new { user.Email, user.FirstName, user.LastName, user.Status });
+		await _auditService.LogUserActionAsync("user.created", "User", user.Id.ToString(), new { req.Email, req.FirstName, req.LastName }, ct);
 		
-		await _cache.RemoveAsync($"users:list:{_current.TenantId}", ct);
-		return new UserDto { Id = user.Id, Email = user.Email, FirstName = user.FirstName, LastName = user.LastName, Status = user.Status.ToString() };
+		return new UserDto
+		{
+			Id = user.Id,
+			Email = user.Email,
+			FirstName = user.FirstName,
+			LastName = user.LastName,
+			Status = user.Status.ToString(),
+			UserRoles = new List<UserRoleBriefDto>()
+		};
 	}
 
 	public async Task<UserDto?> UpdateAsync(Guid id, UpdateUserRequest req, CancellationToken ct = default)
 	{
 		if (!_current.HasPermission("user.update")) throw new UnauthorizedAccessException("Missing permission: user.update");
-		var u = await _db.Users.FindAsync(new object?[] { id }, ct);
-		if (u == null) return null;
 		
-		var changes = new List<string>();
-		if (req.FirstName != null) { u.FirstName = req.FirstName; changes.Add("FirstName"); }
-		if (req.LastName != null) { u.LastName = req.LastName; changes.Add("LastName"); }
-		if (req.Status != null && Enum.TryParse<UserStatus>(req.Status, true, out var st)) { u.Status = st; changes.Add("Status"); }
+		var user = await _db.Users
+			.Include(u => u.UserRoles)
+				.ThenInclude(ur => ur.Role)
+			.FirstOrDefaultAsync(u => u.Id == id, ct);
+		
+		if (user == null) return null;
+		
+		var oldValues = new { user.Email, user.FirstName, user.LastName, user.Status };
+		
+		if (!string.IsNullOrWhiteSpace(req.FirstName))
+			user.FirstName = req.FirstName;
+		if (!string.IsNullOrWhiteSpace(req.LastName))
+			user.LastName = req.LastName;
+		if (!string.IsNullOrWhiteSpace(req.Status))
+			user.Status = Enum.Parse<UserStatus>(req.Status);
 		
 		await _db.SaveChangesAsync(ct);
 		
-		// Audit log the user update
-		await _auditService.LogDatabaseOperationAsync("update", "user", u.Id.ToString(), new { changes, updatedFields = req });
+		await _auditService.LogUserActionAsync("user.updated", "User", user.Id.ToString(), new { oldValues, newValues = req }, ct);
 		
-		await _cache.RemoveAsync($"users:list:{_current.TenantId}", ct);
-		return new UserDto { Id = u.Id, Email = u.Email, FirstName = u.FirstName, LastName = u.LastName, Status = u.Status.ToString() };
+		return new UserDto
+		{
+			Id = user.Id,
+			Email = user.Email,
+			FirstName = user.FirstName,
+			LastName = user.LastName,
+			Status = user.Status.ToString(),
+			LastLoginAtUtc = user.LastLoginAtUtc,
+			UserRoles = user.UserRoles.Select(ur => new UserRoleBriefDto
+			{
+				RoleId = ur.RoleId,
+				RoleName = ur.Role.Name
+			}).ToList()
+		};
 	}
 
 	public async Task<bool> DeleteAsync(Guid id, CancellationToken ct = default)
 	{
 		if (!_current.HasPermission("user.delete")) throw new UnauthorizedAccessException("Missing permission: user.delete");
-		var u = await _db.Users.FindAsync(new object?[] { id }, ct);
-		if (u == null) return false;
 		
-		var userInfo = new { u.Email, u.FirstName, u.LastName, u.Status };
-		_db.Users.Remove(u);
+		var user = await _db.Users.FindAsync(new object[] { id }, ct);
+		if (user == null) return false;
+		
+		_db.Users.Remove(user);
 		await _db.SaveChangesAsync(ct);
 		
-		// Audit log the user deletion
-		await _auditService.LogDatabaseOperationAsync("delete", "user", id.ToString(), userInfo);
+		await _auditService.LogUserActionAsync("user.deleted", "User", user.Id.ToString(), new { user.Email, user.FirstName, user.LastName }, ct);
 		
-		await _cache.RemoveAsync($"users:list:{_current.TenantId}", ct);
 		return true;
+	}
+
+	// Permission management methods
+	public async Task<UserPermissionsResponse> GetUserPermissionsAsync(Guid userId, CancellationToken ct = default)
+	{
+		if (!_current.HasPermission("user.permissions.view")) throw new UnauthorizedAccessException("Missing permission: user.permissions.view");
+		
+		var user = await _db.Users
+			.AsNoTracking()
+			.Include(u => u.UserRoles)
+				.ThenInclude(ur => ur.Role)
+					.ThenInclude(r => r.RolePermissions)
+						.ThenInclude(rp => rp.Permission)
+			.Include(u => u.UserPermissions)
+				.ThenInclude(up => up.Permission)
+			.Include(u => u.UserPermissions)
+				.ThenInclude(up => up.GrantedByUser)
+			.FirstOrDefaultAsync(u => u.Id == userId, ct);
+		
+		if (user == null) throw new ArgumentException("User not found");
+		
+		var directPermissions = user.UserPermissions.Select(up => new UserPermissionDto
+		{
+			Id = up.Id,
+			UserId = up.UserId,
+			PermissionId = up.PermissionId,
+			PermissionName = up.Permission.Name,
+			PermissionDescription = up.Permission.Description,
+			GrantedAtUtc = up.GrantedAtUtc,
+			GrantedByUserId = up.GrantedByUserId,
+			GrantedByUserName = up.GrantedByUser != null ? $"{up.GrantedByUser.FirstName} {up.GrantedByUser.LastName}" : null,
+			Notes = up.Notes
+		}).ToList();
+		
+		var rolePermissions = user.UserRoles.Select(ur => new RolePermissionDto
+		{
+			RoleId = ur.RoleId,
+			RoleName = ur.Role.Name,
+			Permissions = ur.Role.RolePermissions.Select(rp => rp.Permission.Name).ToList()
+		}).ToList();
+		
+		// Get all unique permissions (from roles + direct)
+		var allPermissions = new HashSet<string>();
+		foreach (var role in rolePermissions)
+		{
+			foreach (var permission in role.Permissions)
+			{
+				allPermissions.Add(permission);
+			}
+		}
+		foreach (var permission in directPermissions)
+		{
+			allPermissions.Add(permission.PermissionName);
+		}
+		
+		return new UserPermissionsResponse
+		{
+			UserId = user.Id,
+			UserName = $"{user.FirstName} {user.LastName}",
+			DirectPermissions = directPermissions,
+			RolePermissions = rolePermissions,
+			AllPermissions = allPermissions.ToList()
+		};
+	}
+
+	public async Task<UserPermissionDto> AssignPermissionAsync(AssignUserPermissionRequest request, Guid grantedByUserId, CancellationToken ct = default)
+	{
+		if (!_current.HasPermission("user.permissions.assign")) throw new UnauthorizedAccessException("Missing permission: user.permissions.assign");
+		
+		// Check if permission already exists
+		var existingPermission = await _db.UserPermissions
+			.FirstOrDefaultAsync(up => up.UserId == request.UserId && up.PermissionId == request.PermissionId, ct);
+		
+		if (existingPermission != null)
+		{
+			throw new InvalidOperationException("Permission already assigned to user");
+		}
+		
+		var userPermission = new UserPermission
+		{
+			UserId = request.UserId,
+			PermissionId = request.PermissionId,
+			GrantedByUserId = grantedByUserId,
+			Notes = request.Notes
+		};
+		
+		_db.UserPermissions.Add(userPermission);
+		await _db.SaveChangesAsync(ct);
+		
+		// Get the permission details for the response
+		var permission = await _db.Permissions.FindAsync(new object[] { request.PermissionId }, ct);
+		var grantedByUser = await _db.Users.FindAsync(new object[] { grantedByUserId }, ct);
+		
+		await _auditService.LogUserActionAsync("user.permission.assigned", "UserPermission", userPermission.Id.ToString(), 
+			new { request.UserId, request.PermissionId, request.Notes }, ct);
+		
+		return new UserPermissionDto
+		{
+			Id = userPermission.Id,
+			UserId = userPermission.UserId,
+			PermissionId = userPermission.PermissionId,
+			PermissionName = permission?.Name ?? "",
+			PermissionDescription = permission?.Description,
+			GrantedAtUtc = userPermission.GrantedAtUtc,
+			GrantedByUserId = userPermission.GrantedByUserId,
+			GrantedByUserName = grantedByUser != null ? $"{grantedByUser.FirstName} {grantedByUser.LastName}" : null,
+			Notes = userPermission.Notes
+		};
+	}
+
+	public async Task<bool> RemovePermissionAsync(RemoveUserPermissionRequest request, CancellationToken ct = default)
+	{
+		if (!_current.HasPermission("user.permissions.remove")) throw new UnauthorizedAccessException("Missing permission: user.permissions.remove");
+		
+		var userPermission = await _db.UserPermissions
+			.FirstOrDefaultAsync(up => up.UserId == request.UserId && up.PermissionId == request.PermissionId, ct);
+		
+		if (userPermission == null) return false;
+		
+		_db.UserPermissions.Remove(userPermission);
+		await _db.SaveChangesAsync(ct);
+		
+		await _auditService.LogUserActionAsync("user.permission.removed", "UserPermission", userPermission.Id.ToString(), 
+			new { userPermission.UserId, userPermission.PermissionId }, ct);
+		
+		return true;
+	}
+
+	public async Task<List<string>> GetUserAllPermissionsAsync(Guid userId, CancellationToken ct = default)
+	{
+		var user = await _db.Users
+			.AsNoTracking()
+			.Include(u => u.UserRoles)
+				.ThenInclude(ur => ur.Role)
+					.ThenInclude(r => r.RolePermissions)
+						.ThenInclude(rp => rp.Permission)
+			.Include(u => u.UserPermissions)
+				.ThenInclude(up => up.Permission)
+			.FirstOrDefaultAsync(u => u.Id == userId, ct);
+		
+		if (user == null) return new List<string>();
+		
+		var allPermissions = new HashSet<string>();
+		
+		// Add permissions from roles
+		foreach (var userRole in user.UserRoles)
+		{
+			foreach (var rolePermission in userRole.Role.RolePermissions)
+			{
+				allPermissions.Add(rolePermission.Permission.Name);
+			}
+		}
+		
+		// Add direct permissions
+		foreach (var userPermission in user.UserPermissions)
+		{
+			allPermissions.Add(userPermission.Permission.Name);
+		}
+		
+		return allPermissions.ToList();
 	}
 }
 

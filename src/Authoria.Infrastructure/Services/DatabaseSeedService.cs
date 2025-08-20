@@ -144,6 +144,7 @@ public class DatabaseSeedService : IDatabaseSeedService
         {
             // User Management
             "user.view", "user.create", "user.update", "user.delete",
+            "user.permissions.view", "user.permissions.assign", "user.permissions.remove",
             
             // Role Management
             "role.view", "role.create", "role.update", "role.delete", "role.assign",
