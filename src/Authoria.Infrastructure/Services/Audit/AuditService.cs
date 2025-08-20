@@ -39,7 +39,8 @@ public class AuditService : IAuditService
             StatusCode = entry.StatusCode,
             DurationMs = entry.DurationMs,
             OccurredAtUtc = DateTime.UtcNow,
-            DetailsJson = entry.Details != null ? JsonSerializer.Serialize(entry.Details) : null
+            DetailsJson = entry.Details != null ? JsonSerializer.Serialize(entry.Details) : null,
+            ApplicationId = entry.ApplicationId ?? _current.ApplicationId
         };
 
         _db.AuditLogs.Add(auditLog);

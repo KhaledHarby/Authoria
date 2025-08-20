@@ -55,6 +55,10 @@ import {
 import http from '../../api/http';
 import Pagination from '../../ui/Pagination';
 import Layout from '../../ui/Layout';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
+import { utcToLocalDateTime } from '../../utils/dateUtils';
+import DateTimeDisplay from '../../components/DateTimeDisplay';
 
 interface AuditLog {
   id: string;
@@ -85,6 +89,7 @@ interface PaginationResponse<T> {
 }
 
 const AuditPage: React.FC = () => {
+  const applicationId = useSelector((state: RootState) => (state as any).auth?.applicationId as string | null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -169,7 +174,7 @@ const AuditPage: React.FC = () => {
 
   useEffect(() => {
     loadAuditLogs();
-  }, [currentPage, pageSize, searchTerm, actionFilter, statusFilter, timeFilter]);
+  }, [currentPage, pageSize, searchTerm, actionFilter, statusFilter, timeFilter, applicationId]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -267,7 +272,7 @@ const AuditPage: React.FC = () => {
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return utcToLocalDateTime(dateString);
   };
 
   const analytics = getAnalytics();
@@ -689,9 +694,12 @@ const AuditPage: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" fontSize="0.75rem">
-                            {formatDateTime(log.occurredAtUtc)}
-                          </Typography>
+                          <DateTimeDisplay 
+                            utcDate={log.occurredAtUtc} 
+                            format="datetime" 
+                            variant="body2"
+                            showTooltip={true}
+                          />
                         </TableCell>
                         <TableCell>
                           <Tooltip title="View details">
@@ -825,7 +833,7 @@ const AuditPage: React.FC = () => {
                   <Box sx={{ pl: 1 }}>
                     <Typography variant="body2"><strong>IP Address:</strong> {selectedLog.ipAddress}</Typography>
                     <Typography variant="body2"><strong>Duration:</strong> {formatDuration(selectedLog.durationMs)}</Typography>
-                    <Typography variant="body2"><strong>Timestamp:</strong> {formatDateTime(selectedLog.occurredAtUtc)}</Typography>
+                    <Typography variant="body2"><strong>Timestamp:</strong> <DateTimeDisplay utcDate={selectedLog.occurredAtUtc} format="datetime" /></Typography>
                   </Box>
                 </Box>
                 {selectedLog.detailsJson && (

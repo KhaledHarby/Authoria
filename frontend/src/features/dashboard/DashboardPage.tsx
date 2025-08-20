@@ -31,11 +31,15 @@ import {
   Info as InfoIcon,
   Login as LoginIcon,
   Person as PersonIcon,
+  Apps as AppsIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import Layout from '../../ui/Layout';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { dashboardApi, type DashboardStats, type RecentActivity } from '../../api/dashboardApi';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 
 export default function DashboardPage() {
   const theme = useTheme();
@@ -48,6 +52,7 @@ export default function DashboardPage() {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const applicationId = useSelector((state: RootState) => (state as any).auth?.applicationId as string | null);
 
   // Load dashboard data
   const loadDashboardData = async () => {
@@ -73,7 +78,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [applicationId]);
 
   // Quick Actions with handlers
   const quickActions = [
@@ -223,6 +228,20 @@ export default function DashboardPage() {
       change: '+8%',
       icon: <HistoryIcon />,
       color: '#ef4444',
+    },
+    {
+      title: 'Applications',
+      value: stats?.totalApplications?.toString() || '0',
+      change: '',
+      icon: <AppsIcon />,
+      color: '#6366f1',
+    },
+    {
+      title: 'Active Apps',
+      value: stats?.activeApplications?.toString() || '0',
+      change: '',
+      icon: <CheckCircleIcon />,
+      color: '#22c55e',
     },
   ];
 

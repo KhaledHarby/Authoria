@@ -8,6 +8,7 @@ public class Tenant
 	public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
 	public ICollection<UserTenant> UserTenants { get; set; } = new List<UserTenant>();
+	public ICollection<TenantSetting> TenantSettings { get; set; } = new List<TenantSetting>();
 }
 
 

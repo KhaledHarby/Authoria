@@ -7,9 +7,12 @@ http.interceptors.request.use((config) => {
 	const state: any = store.getState();
 	const token = state?.auth?.accessToken;
 	const tenantId = state?.auth?.tenantId;
+	const applicationId = state?.auth?.applicationId;
 	config.headers = config.headers || {};
 	if (token) (config.headers as any)['Authorization'] = `Bearer ${token}`;
 	if (tenantId) (config.headers as any)['X-Authoria-Tenant'] = tenantId as any;
+	// Always send the X-Authoria-App header, even if null/empty (to override JWT claims)
+	(config.headers as any)['X-Authoria-App'] = applicationId || '';
 	return config;
 });
 

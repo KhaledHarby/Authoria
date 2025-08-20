@@ -2,6 +2,7 @@ using Authoria.Application.Audit;
 using Authoria.Application.Users;
 using Authoria.Application.Roles;
 using Authoria.Application.Permissions;
+using Authoria.Application.Applications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -18,17 +19,20 @@ public class DashboardController : ControllerBase
     private readonly IUserService _userService;
     private readonly IRoleService _roleService;
     private readonly IPermissionService _permissionService;
+    private readonly IApplicationService _applicationService;
 
     public DashboardController(
         IAuditQueryService auditQueryService,
         IUserService userService,
         IRoleService roleService,
-        IPermissionService permissionService)
+        IPermissionService permissionService,
+        IApplicationService applicationService)
     {
         _auditQueryService = auditQueryService;
         _userService = userService;
         _roleService = roleService;
         _permissionService = permissionService;
+        _applicationService = applicationService;
     }
 
     [HttpGet("stats")]
@@ -36,29 +40,28 @@ public class DashboardController : ControllerBase
     {
         try
         {
-            // Get recent audit logs for activity count
             var recentLogs = await _auditQueryService.RecentAsync(100, HttpContext.RequestAborted);
-            
-            // Get user count (we'll use a simple approach for now)
-            var userResponse = await _userService.ListAsync(new Application.Common.PaginationRequest 
-            { 
-                Page = 1, 
-                PageSize = 1 
+
+            var userResponse = await _userService.ListAsync(new Application.Common.PaginationRequest
+            {
+                Page = 1,
+                PageSize = 1
             }, HttpContext.RequestAborted);
-            
-            // Get role count
-            var roleResponse = await _roleService.ListAsync(new Application.Common.PaginationRequest 
-            { 
-                Page = 1, 
-                PageSize = 1 
+
+            var roleResponse = await _roleService.ListAsync(new Application.Common.PaginationRequest
+            {
+                Page = 1,
+                PageSize = 1
             }, HttpContext.RequestAborted);
-            
-            // Get permission count
-            var permissionResponse = await _permissionService.ListAsync(new Application.Common.PaginationRequest 
-            { 
-                Page = 1, 
-                PageSize = 1 
+
+            var permissionResponse = await _permissionService.ListAsync(new Application.Common.PaginationRequest
+            {
+                Page = 1,
+                PageSize = 1
             }, HttpContext.RequestAborted);
+
+            var apps = await _applicationService.ListAsync(HttpContext.RequestAborted);
+            var activeAppIds = await _applicationService.GetActiveApplicationIdsAsync(HttpContext.RequestAborted);
 
             var stats = new DashboardStatsDto
             {
@@ -66,7 +69,9 @@ public class DashboardController : ControllerBase
                 ActiveRoles = roleResponse.TotalCount,
                 TotalPermissions = permissionResponse.TotalCount,
                 TotalAuditEvents = recentLogs.Count > 0 ? recentLogs.Count : 0,
-                RecentActivityCount = recentLogs.Count
+                RecentActivityCount = recentLogs.Count,
+                TotalApplications = apps.Count,
+                ActiveApplications = activeAppIds.Count
             };
 
             return Ok(stats);
@@ -77,7 +82,6 @@ public class DashboardController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the exception
             return StatusCode(500, new { message = "Failed to retrieve dashboard statistics", error = ex.Message });
         }
     }
@@ -87,7 +91,7 @@ public class DashboardController : ControllerBase
     {
         try
         {
-            var logs = await _auditQueryService.RecentAsync(take * 2, HttpContext.RequestAborted); // Get more to filter meaningful ones
+            var logs = await _auditQueryService.RecentAsync(take * 2, HttpContext.RequestAborted);
             var meaningfulActivities = new List<RecentActivityDto>();
 
             foreach (var log in logs)
@@ -119,8 +123,6 @@ public class DashboardController : ControllerBase
         {
             var action = log.Action.ToLower();
             var resourceType = log.ResourceType.ToLower();
-            
-            // Safely deserialize JSON details
             Dictionary<string, object>? details = null;
             if (!string.IsNullOrEmpty(log.DetailsJson))
             {
@@ -130,12 +132,9 @@ public class DashboardController : ControllerBase
                 }
                 catch (JsonException)
                 {
-                    // If JSON deserialization fails, continue with null details
                     details = null;
                 }
             }
-
-            // User management activities
             if (action.Contains("create") && resourceType.Contains("user"))
             {
                 var userName = GetUserNameFromDetails(details);
@@ -150,7 +149,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
             if (action.Contains("update") && resourceType.Contains("user"))
             {
                 var userName = GetUserNameFromDetails(details);
@@ -165,8 +163,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
-            // Role management activities - be more specific about the action
             if ((action.Contains("assign") || action.Contains("add")) && resourceType.Contains("role"))
             {
                 var roleName = GetRoleNameFromDetails(details);
@@ -182,7 +178,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
             if ((action.Contains("remove") || action.Contains("delete")) && resourceType.Contains("role"))
             {
                 var roleName = GetRoleNameFromDetails(details);
@@ -198,7 +193,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
             if (action.Contains("create") && resourceType.Contains("role"))
             {
                 var roleName = GetRoleNameFromDetails(details);
@@ -213,8 +207,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
-            // Permission activities - be more specific
             if ((action.Contains("grant") || action.Contains("assign")) && resourceType.Contains("permission"))
             {
                 var permissionName = GetPermissionNameFromDetails(details);
@@ -230,8 +222,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
-            // Login activities - be more specific
             if (action.Contains("login") || (action.Contains("auth") && action.Contains("success")))
             {
                 var userName = GetUserNameFromDetails(details);
@@ -246,8 +236,6 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
-            // Localization activities
             if (resourceType.Contains("localization") || resourceType.Contains("label"))
             {
                 var labelKey = GetLabelKeyFromDetails(details);
@@ -262,14 +250,10 @@ public class DashboardController : ControllerBase
                     ActorUserId = log.ActorUserId
                 };
             }
-
-            // Skip generic API calls and other non-meaningful activities
             return null;
         }
         catch (Exception ex)
         {
-            // Log the exception and return null to skip this activity
-            // In a production environment, you might want to log this to your logging system
             Console.WriteLine($"Error processing audit log {log.Id}: {ex.Message}");
             return null;
         }
@@ -278,71 +262,54 @@ public class DashboardController : ControllerBase
     private string GetUserNameFromDetails(Dictionary<string, object>? details)
     {
         if (details == null) return "Unknown User";
-        
         if (details.TryGetValue("userName", out var userName) && userName != null)
             return userName.ToString() ?? "Unknown User";
-        
         if (details.TryGetValue("email", out var email) && email != null)
             return email.ToString() ?? "Unknown User";
-        
         if (details.TryGetValue("name", out var name) && name != null)
             return name.ToString() ?? "Unknown User";
-        
         return "Unknown User";
     }
 
     private string GetRoleNameFromDetails(Dictionary<string, object>? details)
     {
         if (details == null) return "Unknown Role";
-        
         if (details.TryGetValue("roleName", out var roleName) && roleName != null)
             return roleName.ToString() ?? "Unknown Role";
-        
         if (details.TryGetValue("name", out var name) && name != null)
             return name.ToString() ?? "Unknown Role";
-        
         return "Unknown Role";
     }
 
     private string GetPermissionNameFromDetails(Dictionary<string, object>? details)
     {
         if (details == null) return "Unknown Permission";
-        
         if (details.TryGetValue("permissionName", out var permissionName) && permissionName != null)
             return permissionName.ToString() ?? "Unknown Permission";
-        
         if (details.TryGetValue("name", out var name) && name != null)
             return name.ToString() ?? "Unknown Permission";
-        
         return "Unknown Permission";
     }
 
     private string GetTargetNameFromDetails(Dictionary<string, object>? details)
     {
         if (details == null) return "Unknown Target";
-        
         if (details.TryGetValue("targetName", out var targetName) && targetName != null)
             return targetName.ToString() ?? "Unknown Target";
-        
         if (details.TryGetValue("userName", out var userName) && userName != null)
             return userName.ToString() ?? "Unknown Target";
-        
         if (details.TryGetValue("roleName", out var roleName) && roleName != null)
             return roleName.ToString() ?? "Unknown Target";
-        
         return "Unknown Target";
     }
 
     private string GetLabelKeyFromDetails(Dictionary<string, object>? details)
     {
         if (details == null) return "Unknown Label";
-        
         if (details.TryGetValue("key", out var key) && key != null)
             return key.ToString() ?? "Unknown Label";
-        
         if (details.TryGetValue("labelKey", out var labelKey) && labelKey != null)
             return labelKey.ToString() ?? "Unknown Label";
-        
         return "Unknown Label";
     }
 }
@@ -354,6 +321,8 @@ public class DashboardStatsDto
     public int TotalPermissions { get; set; }
     public int TotalAuditEvents { get; set; }
     public int RecentActivityCount { get; set; }
+    public int TotalApplications { get; set; }
+    public int ActiveApplications { get; set; }
 }
 
 public class RecentActivityDto

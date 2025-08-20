@@ -8,6 +8,8 @@ using Authoria.Application.Permissions;
 using Authoria.Application.Roles;
 using Authoria.Application.Users;
 using Authoria.Application.Webhooks;
+using Authoria.Application.Applications;
+using Authoria.Application.TenantSettings;
 using Authoria.Infrastructure.Persistence;
 using Authoria.Infrastructure.Services;
 using Authoria.Infrastructure.Services.Audit;
@@ -19,6 +21,8 @@ using Authoria.Infrastructure.Services.Security;
 using Authoria.Infrastructure.Services.Security.Authorization;
 using Authoria.Infrastructure.Services.Users;
 using Authoria.Infrastructure.Services.Webhooks;
+using Authoria.Infrastructure.Services.Applications;
+using Authoria.Infrastructure.Services.TenantSettings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -39,13 +43,9 @@ builder.Services.AddControllers().AddJsonOptions(o =>
 });
 
 // EF Core
-string connstr = builder.Configuration.GetConnectionString("MSSQL");
-Console.Clear();
-Console.WriteLine($"Using connection string: {connstr}");
 builder.Services.AddDbContext<AuthoriaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"))
 );
-
 
 // Caching (for authorization handler deps)
 builder.Services.AddDistributedMemoryCache();
@@ -56,20 +56,18 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy("LocalDev", p =>
 		p.WithOrigins(
-			"http://localhost:5173",  // Vite default
-			"http://localhost:3000",  // React default
-			"http://localhost:4173",  // Vite preview
-			"http://127.0.0.1:5173",  // Alternative localhost
-			"http://127.0.0.1:3000"   // Alternative localhost
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"http://localhost:4173",
+			"http://127.0.0.1:5173",
+			"http://127.0.0.1:3000"
 		)
 		 .AllowAnyHeader()
 		 .AllowAnyMethod()
 		 .AllowCredentials()
 		 .WithExposedHeaders("X-Request-Duration-Ms"));
-	
-	// More permissive policy for development debugging
 	options.AddPolicy("Development", p =>
-		p.SetIsOriginAllowed(origin => true) // Allow any origin but compatible with credentials
+		p.SetIsOriginAllowed(origin => true)
 		 .AllowAnyHeader()
 		 .AllowAnyMethod()
 		 .AllowCredentials()
@@ -106,6 +104,8 @@ builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<IAuditQueryService, AuditQueryService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
+builder.Services.AddScoped<ITenantSettingService, TenantSettingService>();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 builder.Services.AddScoped<IDatabaseSeedService, DatabaseSeedService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -128,12 +128,10 @@ else
 if (app.Environment.IsDevelopment())
 {
     app.UseCors("Development");
-    Console.WriteLine("Using Development CORS policy (AllowAnyOrigin)");
 }
 else
 {
     app.UseCors("LocalDev");
-    Console.WriteLine("Using LocalDev CORS policy (specific origins)");
 }
 
 app.UseAuthentication();
@@ -144,9 +142,11 @@ app.UseMiddleware<AuditMiddleware>();
 
 app.MapControllers();
 
-// Seed database on startup
-using (var scope = app.Services.CreateScope())
+// Seed database on startup (gated by configuration)
+var seedEnabled = app.Configuration.GetValue<bool?>("Seed:Enabled") ?? app.Environment.IsDevelopment();
+if (seedEnabled)
 {
+    using var scope = app.Services.CreateScope();
     try
     {
         var seedService = scope.ServiceProvider.GetRequiredService<IDatabaseSeedService>();

@@ -1,6 +1,7 @@
 using Authoria.Application.Users;
 using Authoria.Application.Users.Dtos;
 using Authoria.Application.Common;
+using Authoria.Application.Abstractions;
 using Authoria.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,19 @@ namespace Authoria.API.Controllers;
 public class UsersController : ControllerBase
 {
 	private readonly IUserService _users;
-	public UsersController(IUserService users) { _users = users; }
+	private readonly ICurrentUserContext _current;
+	public UsersController(IUserService users, ICurrentUserContext current) { 
+		_users = users; 
+		_current = current;
+	}
 
 	[HttpGet]
 	[Authorize]
 	public async Task<IActionResult> List([FromQuery] PaginationRequest request) => Ok(await _users.ListAsync(request));
+
+	[HttpGet("all-tenant")]
+	[Authorize]
+	public async Task<IActionResult> ListAllTenantUsers([FromQuery] PaginationRequest request) => Ok(await _users.ListAllTenantUsersAsync(request));
 
 	[HttpGet("{id}")]
 	[Authorize]
@@ -49,6 +58,20 @@ public class UsersController : ControllerBase
 	{
 		var ok = await _users.DeleteAsync(id);
 		return ok ? NoContent() : NotFound();
+	}
+
+	[HttpGet("debug-context")]
+	[Authorize]
+	public IActionResult DebugContext()
+	{
+		return Ok(new 
+		{
+			ApplicationId = _current.ApplicationId,
+			ApplicationIds = _current.ApplicationIds.ToArray(),
+			TenantId = _current.TenantId,
+			UserId = _current.UserId,
+			Headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString())
+		});
 	}
 }
 

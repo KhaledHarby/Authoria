@@ -17,6 +17,7 @@ public class AuditLog
 	public long? DurationMs { get; set; }
 	public DateTime OccurredAtUtc { get; set; } = DateTime.UtcNow;
 	public string? DetailsJson { get; set; }
+	public Guid? ApplicationId { get; set; }
 }
 
 

@@ -1,5 +1,6 @@
 using Authoria.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using AppEntity = Authoria.Domain.Entities.Application;
 
 namespace Authoria.Infrastructure.Persistence;
 
@@ -15,12 +16,15 @@ public class AuthoriaDbContext : DbContext
 	public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
 	public DbSet<Tenant> Tenants => Set<Tenant>();
 	public DbSet<UserTenant> UserTenants => Set<UserTenant>();
+	public DbSet<AppEntity> Applications => Set<AppEntity>();
+	public DbSet<UserApplication> UserApplications => Set<UserApplication>();
 	public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 	public DbSet<LocalizationLabel> LocalizationLabels => Set<LocalizationLabel>();
 	public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
 	public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 	public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 	public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+	public DbSet<TenantSetting> TenantSettings => Set<TenantSetting>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -60,9 +64,11 @@ public class AuthoriaDbContext : DbContext
 
 		modelBuilder.Entity<UserPermission>(b =>
 		{
-			b.HasKey(x => new { x.UserId, x.PermissionId });
+			b.HasKey(x => new { x.UserId, x.PermissionId, x.TenantId, x.ApplicationId });
 			b.HasOne(x => x.User).WithMany(x => x.UserPermissions).HasForeignKey(x => x.UserId);
 			b.HasOne(x => x.Permission).WithMany(x => x.UserPermissions).HasForeignKey(x => x.PermissionId);
+			b.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId);
+			b.HasOne<AppEntity>().WithMany().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Restrict);
 			b.HasOne(x => x.GrantedByUser).WithMany().HasForeignKey(x => x.GrantedByUserId);
 			b.Property(x => x.Notes).HasMaxLength(500);
 		});
@@ -78,6 +84,21 @@ public class AuthoriaDbContext : DbContext
 			b.HasKey(x => new { x.UserId, x.TenantId });
 			b.HasOne(x => x.User).WithMany(x => x.UserTenants).HasForeignKey(x => x.UserId);
 			b.HasOne(x => x.Tenant).WithMany(x => x.UserTenants).HasForeignKey(x => x.TenantId);
+		});
+
+		modelBuilder.Entity<AppEntity>(b =>
+		{
+			b.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+			b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+			b.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+		});
+
+		modelBuilder.Entity<UserApplication>(b =>
+		{
+			b.HasKey(x => new { x.UserId, x.ApplicationId });
+			b.HasOne(x => x.User).WithMany(x => x.UserApplications).HasForeignKey(x => x.UserId);
+			b.HasOne<AppEntity>(x => x.Application).WithMany().HasForeignKey(x => x.ApplicationId);
+			b.Property(x => x.IsActive).HasDefaultValue(false);
 		});
 
 		modelBuilder.Entity<LocalizationLabel>(b =>
@@ -115,10 +136,19 @@ public class AuthoriaDbContext : DbContext
 		{
 			b.HasIndex(x => new { x.TenantId, x.OccurredAtUtc });
 			b.HasIndex(x => new { x.ActorUserId, x.OccurredAtUtc });
+			b.HasIndex(x => new { x.ApplicationId, x.OccurredAtUtc });
 			b.Property(x => x.Action).HasMaxLength(100).IsRequired();
 			b.Property(x => x.ResourceType).HasMaxLength(100).IsRequired();
 			b.Property(x => x.ResourceId).HasMaxLength(100);
 			b.Property(x => x.DetailsJson).HasMaxLength(4000);
+		});
+
+		modelBuilder.Entity<TenantSetting>(b =>
+		{
+			b.Property(x => x.Key).HasMaxLength(256).IsRequired();
+			b.Property(x => x.Value).HasMaxLength(2000).IsRequired();
+			b.HasIndex(x => new { x.TenantId, x.Key }).IsUnique();
+			b.HasOne(x => x.Tenant).WithMany(x => x.TenantSettings).HasForeignKey(x => x.TenantId);
 		});
 	}
 }

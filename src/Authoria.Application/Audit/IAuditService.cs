@@ -24,5 +24,6 @@ public class AuditLogEntry
     public string UserAgent { get; set; } = string.Empty;
     public int? StatusCode { get; set; }
     public long? DurationMs { get; set; }
+    public Guid? ApplicationId { get; set; }
     public object? Details { get; set; }
 }

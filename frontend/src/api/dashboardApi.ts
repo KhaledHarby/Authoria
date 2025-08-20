@@ -6,6 +6,8 @@ export interface DashboardStats {
   totalPermissions: number;
   totalAuditEvents: number;
   recentActivityCount: number;
+  totalApplications: number;
+  activeApplications: number;
 }
 
 export interface RecentActivity {

@@ -29,47 +29,34 @@ public class DatabaseSeedService : IDatabaseSeedService
 
     public async Task SeedAsync()
     {
-        _logger.LogInformation("Starting database seeding...");
+        _logger.LogInformation("Seeding started");
 
         try
         {
-            // Test database connection first
             if (!await TestDatabaseConnectionAsync())
             {
-                _logger.LogWarning("Database connection failed. Skipping seeding.");
+                _logger.LogWarning("Skipping seeding due to connection failure");
                 return;
             }
 
-            await _context.Database.MigrateAsync();
+            // Assume migrations are applied externally to avoid long startup
+            // await _context.Database.MigrateAsync();
 
-            // Seed tenants
             await SeedTenantsAsync();
-
-            // Seed permissions
             await SeedPermissionsAsync();
-
-            // Seed roles
             await SeedRolesAsync();
-
-            // Assign permissions to roles
             await AssignPermissionsToRolesAsync();
-
-            // Seed admin user
             await SeedAdminUserAsync();
-
-            // Assign roles and tenant to admin user
             await AssignUserRolesAndTenantsAsync();
-
-            // Seed localization labels
+            await SeedApplicationsAsync();
+            await SeedTestUsersAsync();
             await SeedLocalizationLabelsAsync();
 
-            _logger.LogInformation("Database seeding completed successfully.");
+            _logger.LogInformation("Seeding completed");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during database seeding");
-            // Don't throw the exception to prevent the application from crashing
-            // Just log it and continue
+            _logger.LogError(ex, "Error during seeding");
         }
     }
 
@@ -77,52 +64,15 @@ public class DatabaseSeedService : IDatabaseSeedService
     {
         try
         {
-            _logger.LogInformation("Testing database connection...");
-            
-            // Check multiple sources for connection string
-            var connectionString = _configuration.GetConnectionString("SqlServer");
-            var envConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__SqlServer");
-            var envConnectionStringAlt = Environment.GetEnvironmentVariable("ConnectionStrings:SqlServer");
-            
-            _logger.LogInformation("Connection string from configuration: {ConnectionString}", connectionString);
-            _logger.LogInformation("Connection string from environment (double underscore): {EnvConnectionString}", envConnectionString ?? "Not set");
-            _logger.LogInformation("Connection string from environment (colon): {EnvConnectionStringAlt}", envConnectionStringAlt ?? "Not set");
-            
-            // Check if there are any other environment variables that might be affecting this
-            var allEnvVars = Environment.GetEnvironmentVariables();
-            var connectionVars = new List<string>();
-            foreach (var key in allEnvVars.Keys)
-            {
-                var keyStr = key.ToString();
-                if (keyStr.Contains("Connection") || keyStr.Contains("SQL") || keyStr.Contains("Authoria"))
-                {
-                    connectionVars.Add($"{keyStr}={allEnvVars[key]}");
-                }
-            }
-            _logger.LogInformation("All connection-related environment variables: {ConnectionVars}", string.Join(", ", connectionVars));
-            
-            // Let's also check what's in the configuration directly
-            var configSection = _configuration.GetSection("ConnectionStrings");
-            _logger.LogInformation("Configuration section 'ConnectionStrings' exists: {Exists}", configSection.Exists());
-            if (configSection.Exists())
-            {
-                foreach (var child in configSection.GetChildren())
-                {
-                    _logger.LogInformation("Config key: {Key}, Value: {Value}", child.Key, child.Value);
-                }
-            }
-            
-            // Use environment variable if available, otherwise use configuration
-            var finalConnectionString = envConnectionString ?? connectionString;
-            _logger.LogInformation("Final connection string being used: {FinalConnectionString}", finalConnectionString);
-            
+            var conn = _configuration.GetConnectionString("SqlServer");
+            _logger.LogInformation("Testing DB connection to configured SQL Server");
             await _context.Database.CanConnectAsync();
-            _logger.LogInformation("Database connection successful.");
+            _logger.LogInformation("DB connection OK");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Database connection failed. Please ensure SQL Server is running and the connection string is correct.");
+            _logger.LogError(ex, "DB connection failed");
             return false;
         }
     }
@@ -351,8 +301,154 @@ public class DatabaseSeedService : IDatabaseSeedService
             _context.UserTenants.Add(new UserTenant { UserId = adminUserId, TenantId = defaultTenantId });
         }
 
+        // Link admin user to all applications
+        var applicationIds = new[]
+        {
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), // Main Application
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), // Admin Portal
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc")  // Mobile App
+        };
+
+        foreach (var appId in applicationIds)
+        {
+            if (!await _context.UserApplications.AnyAsync(ua => ua.UserId == adminUserId && ua.ApplicationId == appId))
+            {
+                _context.UserApplications.Add(new UserApplication 
+                { 
+                    UserId = adminUserId, 
+                    ApplicationId = appId, 
+                    IsActive = true 
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Admin user assigned to all roles and default tenant");
+        _logger.LogInformation("Admin user assigned to all roles, default tenant, and all applications");
+    }
+
+    private async Task SeedApplicationsAsync()
+    {
+        var defaultTenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        
+        var applications = new[]
+        {
+            new Authoria.Domain.Entities.Application 
+            { 
+                Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                TenantId = defaultTenantId, 
+                Name = "Main Application", 
+                Description = "Primary business application",
+                CreatedAtUtc = DateTime.UtcNow
+            },
+            new Authoria.Domain.Entities.Application 
+            { 
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                TenantId = defaultTenantId, 
+                Name = "Admin Portal", 
+                Description = "Administrative interface",
+                CreatedAtUtc = DateTime.UtcNow
+            },
+            new Authoria.Domain.Entities.Application 
+            { 
+                Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                TenantId = defaultTenantId, 
+                Name = "Mobile App", 
+                Description = "Mobile application backend",
+                CreatedAtUtc = DateTime.UtcNow
+            }
+        };
+
+        foreach (var app in applications)
+        {
+            if (!await _context.Applications.AnyAsync(a => a.Id == app.Id))
+            {
+                _context.Applications.Add(app);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Applications seeded");
+    }
+
+    private async Task SeedTestUsersAsync()
+    {
+        var defaultTenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var userRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var passwordHash = _passwordHasher.HashPassword("Admin123!");
+
+        // Ensure we have at least 100 users
+        var existingCount = await _context.Users.CountAsync();
+        var toSeed = Math.Max(0, 100 - existingCount);
+        if (toSeed <= 0)
+        {
+            _logger.LogInformation("Skipping test users seeding: existing users = {Count}", existingCount);
+            return;
+        }
+
+        var firstNames = new[] { "John", "Jane", "Michael", "Emily", "David", "Sarah", "Robert", "Olivia", "Daniel", "Emma", "Liam", "Sophia", "Noah", "Isabella", "James", "Mia", "Benjamin", "Charlotte", "Lucas", "Amelia" };
+        var lastNames = new[] { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin" };
+
+        // Get application IDs for linking users
+        var applicationIds = new[]
+        {
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), // Main Application
+            Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), // Admin Portal
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc")  // Mobile App
+        };
+
+        var toCreate = new List<User>();
+        var toCreateUserTenants = new List<UserTenant>();
+        var toCreateUserRoles = new List<UserRole>();
+        var toCreateUserApplications = new List<UserApplication>();
+
+        int idx = existingCount + 1;
+        for (int i = 0; i < toSeed; i++)
+        {
+            var fn = firstNames[i % firstNames.Length];
+            var ln = lastNames[(i / firstNames.Length + i) % lastNames.Length];
+            var email = $"{fn.ToLower()}.{ln.ToLower()}{idx}@example.com";
+            idx++;
+
+            if (await _context.Users.AnyAsync(u => u.Email == email)) continue;
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                PasswordHash = passwordHash,
+                FirstName = fn,
+                LastName = ln,
+                Status = UserStatus.Active,
+                LastLoginAtUtc = null
+            };
+            toCreate.Add(user);
+            toCreateUserTenants.Add(new UserTenant { UserId = user.Id, TenantId = defaultTenantId });
+            toCreateUserRoles.Add(new UserRole { UserId = user.Id, RoleId = userRoleId });
+
+            // Link users to applications randomly (each user gets 1-3 applications)
+            var appCount = new Random().Next(1, 4); // 1 to 3 applications
+            var selectedApps = applicationIds.OrderBy(x => Guid.NewGuid()).Take(appCount);
+            foreach (var appId in selectedApps)
+            {
+                toCreateUserApplications.Add(new UserApplication 
+                { 
+                    UserId = user.Id, 
+                    ApplicationId = appId, 
+                    IsActive = true 
+                });
+            }
+        }
+
+        if (toCreate.Count > 0)
+        {
+            await _context.Users.AddRangeAsync(toCreate);
+            await _context.SaveChangesAsync();
+            await _context.UserTenants.AddRangeAsync(toCreateUserTenants);
+            await _context.UserRoles.AddRangeAsync(toCreateUserRoles);
+            await _context.UserApplications.AddRangeAsync(toCreateUserApplications);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Seeded {Count} test users with application links", toCreate.Count);
+        }
     }
 
     private async Task SeedLocalizationLabelsAsync()

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Drawer,
@@ -19,6 +19,10 @@ import {
   useTheme,
   useMediaQuery,
   Stack,
+  FormControl,
+  Select,
+  InputLabel,
+  Link,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,6 +36,10 @@ import {
   Settings as SettingsIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
+  Apps as AppsIcon,
+  GitHub as GitHubIcon,
+  Email as EmailIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -39,6 +47,9 @@ import type { RootState } from '../app/store';
 import { setLanguage, setDarkMode } from '../features/settings/settingsSlice';
 import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { applicationsApi, type Application } from '../api/applicationsApi';
+import { setApplicationId } from '../features/auth/authSlice';
+import { getUserTimezone } from '../utils/dateUtils';
 
 const drawerWidth = 280;
 
@@ -49,6 +60,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [apps, setApps] = useState<Application[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -57,9 +69,20 @@ export default function Layout({ children }: LayoutProps) {
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const { isRTL, darkMode } = useSelector((state: RootState) => state.settings);
+  const applicationId = useSelector((state: RootState) => (state as any).auth?.applicationId as string | null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await applicationsApi.list();
+        setApps(data);
+      } catch {}
+    })();
+  }, []);
 
   const menuItems = [
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Applications', icon: <AppsIcon />, path: '/applications' },
     { text: t('navigation.users'), icon: <PeopleIcon />, path: '/users' },
     { text: t('navigation.roles'), icon: <SecurityIcon />, path: '/roles' },
     { text: t('navigation.permissions'), icon: <SecurityIcon />, path: '/permissions' },
@@ -81,7 +104,6 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = () => {
-    // Handle logout logic here
     navigate('/');
     handleProfileMenuClose();
   };
@@ -205,10 +227,94 @@ export default function Layout({ children }: LayoutProps) {
     </Box>
   );
 
+  const footer = (
+    <Box
+      component="footer"
+      sx={{
+        py: 2,
+        px: { xs: 2, sm: 3 },
+        backgroundColor: theme.palette.mode === 'dark' ? 'background.paper' : 'grey.50',
+        borderTop: `1px solid ${theme.palette.divider}`,
+        mt: 'auto', // Push footer to bottom
+      }}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems="center"
+        spacing={{ xs: 1, sm: 0 }}
+      >
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ textAlign: { xs: 'center', sm: 'left' } }}
+        >
+          © {new Date().getFullYear()} Authoria. All rights reserved. | Timezone: {getUserTimezone()}
+        </Typography>
+        
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+        >
+          <Link
+            href="#"
+            color="text.secondary"
+            underline="hover"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              fontSize: '0.875rem',
+              '&:hover': { color: 'primary.main' }
+            }}
+          >
+            <InfoIcon fontSize="small" />
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              About
+            </Typography>
+          </Link>
+          <Link
+            href="#"
+            color="text.secondary"
+            underline="hover"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              fontSize: '0.875rem',
+              '&:hover': { color: 'primary.main' }
+            }}
+          >
+            <EmailIcon fontSize="small" />
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              Support
+            </Typography>
+          </Link>
+          <Link
+            href="#"
+            color="text.secondary"
+            underline="hover"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              fontSize: '0.875rem',
+              '&:hover': { color: 'primary.main' }
+            }}
+          >
+            <GitHubIcon fontSize="small" />
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              GitHub
+            </Typography>
+          </Link>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+
   return (
-    <Box sx={{ 
-      display: 'flex',
-    }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
         position="fixed"
         sx={{
@@ -226,11 +332,7 @@ export default function Layout({ children }: LayoutProps) {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ 
-              mr: { xs: 1, sm: 2 }, 
-              display: { sm: 'none' },
-              p: { xs: 0.5, sm: 1 }
-            }}
+            sx={{ mr: { xs: 1, sm: 2 }, display: { sm: 'none' }, p: { xs: 0.5, sm: 1 } }}
           >
             <MenuIcon />
           </IconButton>
@@ -238,71 +340,46 @@ export default function Layout({ children }: LayoutProps) {
             variant="h6" 
             noWrap 
             component="div" 
-            sx={{ 
-              flexGrow: 1,
-              fontSize: { xs: '1rem', sm: '1.25rem' },
-              fontWeight: 600
-            }}
+            sx={{ flexGrow: 1, fontSize: { xs: '1rem', sm: '1.25rem' }, fontWeight: 600 }}
           >
             {menuItems.find(item => item.path === location.pathname)?.text || t('navigation.dashboard')}
           </Typography>
-          
-          <Stack direction="row" spacing={1} alignItems="center">
-            {/* Dark Mode Toggle */}
-            <IconButton
-              onClick={handleToggleDarkMode}
-              color="inherit"
-              sx={{ 
-                p: { xs: 0.5, sm: 1 },
-                '&:hover': {
-                  backgroundColor: 'action.hover',
-                }
-              }}
+
+          {/* Active Application Selector */}
+          <FormControl size="small" sx={{ minWidth: 180, mr: 1, display: { xs: 'none', sm: 'flex' } }}>
+            <InputLabel>Application</InputLabel>
+            <Select
+              native
+              value={applicationId || ''}
+              onChange={(e: any) => dispatch(setApplicationId(e.target.value || null))}
+              label="Application"
             >
+              <option value="">Select application</option>
+              {apps.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Stack direction="row" spacing={1} alignItems="center">
+            <IconButton onClick={handleToggleDarkMode} color="inherit" sx={{ p: { xs: 0.5, sm: 1 } }}>
               {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
-            
-            {/* Language Selector */}
             <LanguageSelector />
-            
-            <IconButton
-              onClick={handleProfileMenuOpen}
-              sx={{ 
-                ml: 1,
-                p: { xs: 0.5, sm: 1 }
-              }}
-            >
-              <Avatar 
-                sx={{ 
-                  width: { xs: 28, sm: 32 }, 
-                  height: { xs: 28, sm: 32 }, 
-                  bgcolor: theme.palette.primary.main 
-                }}
-              >
+            <IconButton onClick={handleProfileMenuOpen} sx={{ ml: 1, p: { xs: 0.5, sm: 1 } }}>
+              <Avatar sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, bgcolor: theme.palette.primary.main }}>
                 <AccountCircleIcon />
               </Avatar>
             </IconButton>
           </Stack>
-          
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleProfileMenuClose}
-            PaperProps={{
-              sx: {
-                mt: 1,
-                minWidth: 200,
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-              },
-            }}
-          >
+
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleProfileMenuClose} PaperProps={{ sx: { mt: 1, minWidth: 200, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' } }}>
             <MenuItem onClick={handleProfileMenuClose}>
               <ListItemIcon>
                 <AccountCircleIcon fontSize="small" />
               </ListItemIcon>
               Profile
             </MenuItem>
-
             <MenuItem onClick={handleProfileMenuClose}>
               <ListItemIcon>
                 <SettingsIcon fontSize="small" />
@@ -319,60 +396,30 @@ export default function Layout({ children }: LayoutProps) {
           </Menu>
         </Toolbar>
       </AppBar>
-      <Box
-        component="nav"
-        sx={{ 
-          width: { sm: drawerWidth }, 
-          flexShrink: { sm: 0 },
-        }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              backgroundColor: 'background.paper',
-              borderRight: `1px solid ${theme.palette.divider}`,
-            },
-          }}
-        >
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+        <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, backgroundColor: 'background.paper', borderRight: `1px solid ${theme.palette.divider}` } }}>
           {drawer}
         </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              backgroundColor: 'background.paper',
-              borderRight: `1px solid ${theme.palette.divider}`,
-            },
-          }}
-          open
-        >
+        <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, backgroundColor: 'background.paper', borderRight: `1px solid ${theme.palette.divider}` } }} open>
           {drawer}
         </Drawer>
       </Box>
-      <Box
-        component="main"
-        sx={{
+      <Box 
+        component="main" 
+        sx={{ 
           flexGrow: 1,
-          p: { xs: 1, sm: 2, md: 3 },
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: { xs: 7, sm: 8 },
-          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          width: { sm: `calc(100% - ${drawerWidth}px)` }, 
+          mt: { xs: 7, sm: 8 }, 
           backgroundColor: 'background.default',
+          minHeight: `calc(100vh - ${theme.spacing(7)}px)`, // Subtract header height
         }}
       >
-        {children}
+        <Box sx={{ flexGrow: 1, p: { xs: 1, sm: 2, md: 3 }, minHeight: 0 }}>
+          {children}
+        </Box>
+        {footer}
       </Box>
     </Box>
   );

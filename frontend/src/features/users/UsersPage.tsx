@@ -53,11 +53,16 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import Layout from '../../ui/Layout';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 import Pagination from '../../ui/Pagination';
 import SearchBar from '../../ui/SearchBar';
 import CheckboxGroup from '../../ui/CheckboxGroup';
 import http from '../../api/http';
 import { userPermissionsApi, type UserPermissionsResponse, type UserPermission, type RolePermission } from '../../api/userPermissionsApi';
+import { applicationsApi } from '../../api/applicationsApi';
+import { utcToLocalDate, utcToLocalDateTime } from '../../utils/dateUtils';
+import DateTimeDisplay from '../../components/DateTimeDisplay';
 
 // User interface
 interface User {
@@ -92,6 +97,7 @@ interface PaginationResponse<T> {
 }
 
 export default function UsersPage() {
+  const applicationId = useSelector((state: RootState) => (state as any).auth?.applicationId as string | null);
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
@@ -129,6 +135,9 @@ export default function UsersPage() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [permissionTabValue, setPermissionTabValue] = useState(0);
   const [permissionNotes, setPermissionNotes] = useState('');
+
+  // Applications linked to the selected user (for View dialog)
+  const [userApplications, setUserApplications] = useState<{ id: string; name: string }[]>([]);
 
   // Load users
   const loadUsers = async () => {
@@ -177,9 +186,26 @@ export default function UsersPage() {
     }
   };
 
+  // Load user applications
+  const loadUserApps = async (userId: string) => {
+    try {
+      const apps = await applicationsApi.listUserApplications(userId);
+      setUserApplications(apps);
+    } catch (err: any) {
+      console.error('Failed to load user applications:', err);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
   }, [currentPage, pageSize, searchTerm]);
+
+  // Reload when selected application changes; reset to first page
+  useEffect(() => {
+    setCurrentPage(1);
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applicationId]);
 
   useEffect(() => {
     loadRoles();
@@ -206,6 +232,8 @@ export default function UsersPage() {
       loadUserPermissions(user.id);
       setPermissionTabValue(0);
       setPermissionNotes('');
+    } else if (type === 'view') {
+      loadUserApps(user.id);
     }
     
     setOpenDialog(true);
@@ -216,6 +244,7 @@ export default function UsersPage() {
     setSelectedUser(null);
     setError('');
     setSuccess('');
+    setUserApplications([]);
   };
 
   const handleAction = (action: 'view' | 'edit' | 'delete' | 'assign-role' | 'manage-permissions') => {
@@ -231,7 +260,7 @@ export default function UsersPage() {
       await http.post('/api/users', newUser);
       setSuccess('User created successfully');
       loadUsers();
-      handleDialogClose();
+        handleDialogClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create user');
     } finally {
@@ -243,8 +272,8 @@ export default function UsersPage() {
     if (!selectedUser) return;
     
     try {
-      setLoading(true);
-      setError('');
+    setLoading(true);
+    setError('');
       await http.put(`/api/users/${selectedUser.id}`, newUser);
       setSuccess('User updated successfully');
       loadUsers();
@@ -260,8 +289,8 @@ export default function UsersPage() {
     if (!selectedUser) return;
     
     try {
-      setLoading(true);
-      setError('');
+    setLoading(true);
+    setError('');
       await http.delete(`/api/users/${selectedUser.id}`);
       setSuccess('User deleted successfully');
       loadUsers();
@@ -282,7 +311,7 @@ export default function UsersPage() {
       await http.post(`/api/users/${selectedUser.id}/roles`, { roleIds: selectedRoleIds });
       setSuccess('Roles assigned successfully');
       loadUsers();
-      handleDialogClose();
+        handleDialogClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to assign roles');
     } finally {
@@ -295,18 +324,17 @@ export default function UsersPage() {
     
     try {
       setLoading(true);
-      setError('');
+    setError('');
       
-      // Get the first selected permission that's not already assigned
       const availablePermissions = permissions.filter(p => 
         !userPermissions?.directPermissions.some(dp => dp.permissionId === p.id)
       );
       
       if (availablePermissions.length === 0) {
         setError('No available permissions to assign');
-        return;
-      }
-      
+      return;
+    }
+
       const permissionToAssign = availablePermissions[0];
       
       await userPermissionsApi.assignPermission({
@@ -329,10 +357,10 @@ export default function UsersPage() {
 
   const handleRemovePermission = async (permissionId: string) => {
     if (!selectedUser) return;
-    
+
     try {
-      setLoading(true);
-      setError('');
+    setLoading(true);
+    setError('');
       
       await userPermissionsApi.removePermission({
         userId: selectedUser.id,
@@ -350,19 +378,19 @@ export default function UsersPage() {
     }
   };
 
-  // Pagination handlers
+    // Pagination handlers
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setCurrentPage(1);
   };
 
   const handleSearchChange = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const filteredUsers = users.filter((user) => {
@@ -431,20 +459,20 @@ export default function UsersPage() {
                   onChange={handleSearchChange}
                   placeholder="Search users by name or email..."
                   showFilters={true}
-                  filters={[
-                    {
-                      label: 'Role',
-                      value: filterRole,
-                      options: [
-                        { label: 'All Roles', value: '' },
-                        { label: 'Admin', value: 'Admin' },
-                        { label: 'Manager', value: 'Manager' },
-                        { label: 'User', value: 'User' },
-                        { label: 'Auditor', value: 'Auditor' },
-                        { label: 'Developer', value: 'Developer' }
-                      ],
-                      onChange: setFilterRole
-                    },
+                                        filters={[
+                        {
+                          label: 'Role',
+                          value: filterRole,
+                          options: [
+                            { label: 'All Roles', value: '' },
+                            { label: 'Admin', value: 'Admin' },
+                            { label: 'Manager', value: 'Manager' },
+                            { label: 'User', value: 'User' },
+                            { label: 'Auditor', value: 'Auditor' },
+                            { label: 'Developer', value: 'Developer' }
+                          ],
+                          onChange: setFilterRole
+                        },
                     {
                       label: 'Status',
                       value: filterStatus,
@@ -473,90 +501,87 @@ export default function UsersPage() {
             ) : (
               <>
                 <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
+                <Table>
+                  <TableHead>
+                    <TableRow>
                         <TableCell>User</TableCell>
                         <TableCell>Email</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Roles</TableCell>
                         <TableCell>Last Login</TableCell>
                         <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user.id} hover>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                    <TableRow key={user.id} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
                                 {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                              </Avatar>
-                              <Box>
-                                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
                                   {user.firstName} {user.lastName}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </TableCell>
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
                           <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Chip
+                      <TableCell>
+                              <Chip
                               label={user.status}
                               color={getStatusColor(user.status) as any}
-                              size="small"
+                                size="small"
                             />
                           </TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                               {user.userRoles?.map((role) => (
-                                <Chip
+                            <Chip
                                   key={role.roleId}
                                   label={role.roleName}
                                   color={getRoleColor(role.roleName) as any}
-                                  size="small"
-                                  variant="outlined"
-                                />
+                              size="small"
+                              variant="outlined"
+                            />
                               )) || <Typography variant="body2" color="text.secondary">No roles</Typography>}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            {user.lastLoginAtUtc ? (
-                              <Typography variant="body2">
-                                {new Date(user.lastLoginAtUtc).toLocaleDateString()}
-                              </Typography>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                Never
-                              </Typography>
-                            )}
-                          </TableCell>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                            <DateTimeDisplay 
+                              utcDate={user.lastLoginAtUtc} 
+                              format="date" 
+                              variant="body2"
+                              showTooltip={true}
+                            />
+                      </TableCell>
                           <TableCell align="right">
-                            <IconButton
+                        <IconButton
                               onClick={(e) => {
                                 setAnchorEl(e.currentTarget);
                                 setSelectedUser(user);
                               }}
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalCount={totalCount}
-                  pageSize={pageSize}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
               </>
-            )}
+        )}
           </CardContent>
         </Card>
 
@@ -601,25 +626,25 @@ export default function UsersPage() {
 
         {/* Dialog */}
         <Dialog open={openDialog} onClose={handleDialogClose} maxWidth="md" fullWidth>
-          <DialogTitle>
-            {dialogType === 'create' && 'Create New User'}
+                  <DialogTitle>
+          {dialogType === 'create' && 'Create New User'}
             {dialogType === 'view' && `User Details - ${selectedUser?.firstName} ${selectedUser?.lastName}`}
             {dialogType === 'edit' && `Edit User - ${selectedUser?.firstName} ${selectedUser?.lastName}`}
-            {dialogType === 'delete' && 'Delete User'}
-            {dialogType === 'assign-role' && 'Assign Role'}
+          {dialogType === 'delete' && 'Delete User'}
+          {dialogType === 'assign-role' && 'Assign Role'}
             {dialogType === 'manage-permissions' && 'Manage Permissions'}
-          </DialogTitle>
+        </DialogTitle>
           <DialogContent>
-            {error && (
+                {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-            {success && (
+                    {error}
+                  </Alert>
+                )}
+                {success && (
               <Alert severity="success" sx={{ mb: 2 }}>
-                {success}
-              </Alert>
-            )}
+                    {success}
+                  </Alert>
+                )}
 
             {dialogType === 'create' && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -672,7 +697,7 @@ export default function UsersPage() {
               <Box sx={{ mt: 1 }}>
                 <Typography variant="h6" gutterBottom>User Information</Typography>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
-                  <Box>
+              <Box>
                     <Typography variant="body2" color="text.secondary">Name</Typography>
                     <Typography variant="body1">{selectedUser.firstName} {selectedUser.lastName}</Typography>
                   </Box>
@@ -686,14 +711,17 @@ export default function UsersPage() {
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">Last Login</Typography>
-                    <Typography variant="body1">
-                      {selectedUser.lastLoginAtUtc ? new Date(selectedUser.lastLoginAtUtc).toLocaleString() : 'Never'}
-                    </Typography>
+                    <DateTimeDisplay 
+                      utcDate={selectedUser.lastLoginAtUtc} 
+                      format="datetime" 
+                      variant="body1"
+                      showTooltip={true}
+                    />
                   </Box>
                 </Box>
                 
                 <Typography variant="h6" gutterBottom>Roles</Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
                   {selectedUser.userRoles?.map((role) => (
                     <Chip
                       key={role.roleId}
@@ -703,20 +731,31 @@ export default function UsersPage() {
                     />
                   )) || <Typography variant="body2" color="text.secondary">No roles assigned</Typography>}
                 </Box>
+
+                <Typography variant="h6" gutterBottom>Applications</Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {userApplications.length > 0 ? (
+                    userApplications.map(app => (
+                      <Chip key={app.id} label={app.name} color="primary" variant="outlined" />
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">No applications linked</Typography>
+                  )}
+                </Box>
               </Box>
             )}
 
             {dialogType === 'edit' && selectedUser && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                <TextField
-                  label="First Name"
+                    <TextField
+                      label="First Name"
                   value={newUser.firstName}
                   onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
                   fullWidth
                   required
-                />
-                <TextField
-                  label="Last Name"
+                    />
+                    <TextField
+                      label="Last Name"
                   value={newUser.lastName}
                   onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
                   fullWidth
@@ -737,65 +776,65 @@ export default function UsersPage() {
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   fullWidth
                 />
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select
+                    <FormControl fullWidth>
+                      <InputLabel>Status</InputLabel>
+                      <Select
                     value={newUser.status}
                     onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}
-                    label="Status"
-                  >
-                    <MenuItem value="Active">Active</MenuItem>
-                    <MenuItem value="Inactive">Inactive</MenuItem>
+                        label="Status"
+                      >
+                        <MenuItem value="Active">Active</MenuItem>
+                        <MenuItem value="Inactive">Inactive</MenuItem>
                     <MenuItem value="Locked">Locked</MenuItem>
-                  </Select>
-                </FormControl>
+                      </Select>
+                    </FormControl>
               </Box>
             )}
 
-            {dialogType === 'delete' && (
+            {dialogType === 'delete' && selectedUser && (
               <Typography variant="body1">
                 Are you sure you want to delete user "{`${selectedUser.firstName} ${selectedUser.lastName}`}"? This action cannot be undone.
               </Typography>
             )}
 
-            {dialogType === 'assign-role' && (
+            {dialogType === 'assign-role' && selectedUser && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                <Box>
+                    <Box>
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     Assign Roles to {selectedUser.firstName} {selectedUser.lastName}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
                     Current Roles: {selectedUser.userRoles?.map(ur => ur.roleName).join(', ') || 'No Roles Assigned'}
-                  </Typography>
-                </Box>
-
-                <CheckboxGroup
-                  title="Select Roles"
-                  options={[
-                    { value: '', label: 'No Role', description: 'Remove all role assignments' },
-                                         ...roles.map(role => ({
-                       value: role.id,
-                       label: role.name,
-                       description: `Assign ${role.name} role`,
-                       chip: {
-                         label: role.name,
-                         color: getRoleColor(role.name) as any,
-                         variant: 'outlined' as const
-                       }
-                     }))
-                  ]}
-                  selectedValues={selectedRoleIds}
-                  onSelectionChange={setSelectedRoleIds}
-                  maxHeight={250}
-                  showCheckAll={true}
-                  showChips={true}
-                  dense={true}
-                />
-
+                        </Typography>
+                      </Box>
+                      
+                      <CheckboxGroup
+                        title="Select Roles"
+                        options={[
+                          { value: '', label: 'No Role', description: 'Remove all role assignments' },
+                          ...roles.map(role => ({
+                            value: role.id,
+                            label: role.name,
+                      description: `Assign ${role.name} role`,
+                            chip: {
+                              label: role.name,
+                              color: getRoleColor(role.name) as any,
+                        variant: 'outlined' as const
+                            }
+                          }))
+                        ]}
+                        selectedValues={selectedRoleIds}
+                        onSelectionChange={setSelectedRoleIds}
+                        maxHeight={250}
+                        showCheckAll={true}
+                        showChips={true}
+                        dense={true}
+                      />
+                      
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Select one or more roles to assign to this user. Multiple roles can be assigned.
-                </Typography>
-              </Box>
+                        Select one or more roles to assign to this user. Multiple roles can be assigned.
+                      </Typography>
+                    </Box>
             )}
 
             {dialogType === 'manage-permissions' && userPermissions && (
@@ -804,7 +843,7 @@ export default function UsersPage() {
                   Manage Permissions for {userPermissions.userName}
                 </Typography>
 
-                <Tabs value={permissionTabValue} onChange={(e, newValue) => setPermissionTabValue(newValue)} sx={{ mb: 3 }}>
+                <Tabs value={permissionTabValue} onChange={(_, newValue) => setPermissionTabValue(newValue)} sx={{ mb: 3 }}>
                   <Tab label="Direct Permissions" />
                   <Tab label="Role Permissions" />
                   <Tab label="All Permissions" />
@@ -817,7 +856,7 @@ export default function UsersPage() {
                       <Tooltip title="Direct permissions are assigned specifically to this user, independent of their roles">
                         <InfoIcon fontSize="small" color="action" />
                       </Tooltip>
-                    </Box>
+                  </Box>
                     
                     {userPermissions.directPermissions.length > 0 ? (
                       <List>
@@ -838,8 +877,8 @@ export default function UsersPage() {
                               {permission.notes && (
                                 <Typography variant="caption" color="text.secondary" display="block">
                                   Notes: {permission.notes}
-                                </Typography>
-                              )}
+                  </Typography>
+                )}
                             </Box>
                             <ListItemSecondaryAction>
                               <IconButton
@@ -886,7 +925,7 @@ export default function UsersPage() {
                 )}
 
                 {permissionTabValue === 1 && (
-                  <Box>
+                    <Box>
                     <Typography variant="subtitle1" sx={{ mb: 2 }}>Permissions from Roles</Typography>
                     {userPermissions.rolePermissions.length > 0 ? (
                       <List>
@@ -895,7 +934,7 @@ export default function UsersPage() {
                             <Box sx={{ flexGrow: 1 }}>
                               <Typography variant="body1" sx={{ fontWeight: 600, color: 'primary.main' }}>
                                 {role.roleName} Role
-                              </Typography>
+                      </Typography>
                               <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
                                 {role.permissions.map((permission) => (
                                   <Chip
@@ -915,7 +954,7 @@ export default function UsersPage() {
                         No role permissions available
                       </Typography>
                     )}
-                  </Box>
+                    </Box>
                 )}
 
                 {permissionTabValue === 2 && (

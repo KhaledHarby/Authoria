@@ -10,6 +10,7 @@ import LocalizationPage from '../features/localization/LocalizationPage';
 import AuditPage from '../features/audit/AuditPage';
 import WebhooksPage from '../features/webhooks/WebhooksPage';
 import SettingsPage from '../features/settings/SettingsPage';
+import ApplicationsPage from '../features/applications/ApplicationsPage';
 
 const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/dashboard', element: <DashboardPage /> },
+  { path: '/applications', element: <ApplicationsPage /> },
   { path: '/users', element: <UsersPage /> },
   { path: '/roles', element: <RolesPage /> },
   { path: '/permissions', element: <PermissionsPage /> },

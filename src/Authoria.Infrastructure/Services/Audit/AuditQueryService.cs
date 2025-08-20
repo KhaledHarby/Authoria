@@ -16,7 +16,27 @@ public class AuditQueryService : IAuditQueryService
 	public async Task<IReadOnlyList<AuditLog>> RecentAsync(int take = 200, CancellationToken ct = default)
 	{
 		if (!_current.HasPermission("audit.view")) throw new UnauthorizedAccessException("Missing permission: audit.view");
-		return await _db.AuditLogs.AsNoTracking().OrderByDescending(a => a.OccurredAtUtc).Take(take).ToListAsync(ct);
+		
+		var query = _db.AuditLogs.AsNoTracking();
+		
+		// Scope by tenant
+		var tenantId = _current.TenantId ?? throw new InvalidOperationException("TenantId is required in context");
+		query = query.Where(a => a.TenantId == tenantId);
+		
+		// Scope by application if selected
+		if (_current.ApplicationId.HasValue)
+		{
+			// If specific application is selected, show only audit logs for that application
+			query = query.Where(a => a.ApplicationId == _current.ApplicationId.Value);
+		}
+		else if (_current.ApplicationIds.Any())
+		{
+			// If multiple applications are selected, show audit logs for any of those applications
+			query = query.Where(a => a.ApplicationId.HasValue && _current.ApplicationIds.Contains(a.ApplicationId.Value));
+		}
+		// If no application is selected, show all audit logs in the tenant (no additional filtering)
+		
+		return await query.OrderByDescending(a => a.OccurredAtUtc).Take(take).ToListAsync(ct);
 	}
 
 	public async Task<PaginationResponse<AuditLog>> ListAsync(PaginationRequest request, CancellationToken ct = default)
@@ -24,6 +44,23 @@ public class AuditQueryService : IAuditQueryService
 		if (!_current.HasPermission("audit.view")) throw new UnauthorizedAccessException("Missing permission: audit.view");
 		
 		var query = _db.AuditLogs.AsNoTracking();
+		
+		// Scope by tenant
+		var tenantId = _current.TenantId ?? throw new InvalidOperationException("TenantId is required in context");
+		query = query.Where(a => a.TenantId == tenantId);
+		
+		// Scope by application if selected
+		if (_current.ApplicationId.HasValue)
+		{
+			// If specific application is selected, show only audit logs for that application
+			query = query.Where(a => a.ApplicationId == _current.ApplicationId.Value);
+		}
+		else if (_current.ApplicationIds.Any())
+		{
+			// If multiple applications are selected, show audit logs for any of those applications
+			query = query.Where(a => a.ApplicationId.HasValue && _current.ApplicationIds.Contains(a.ApplicationId.Value));
+		}
+		// If no application is selected, show all audit logs in the tenant (no additional filtering)
 		
 		// Apply search filter
 		if (!string.IsNullOrWhiteSpace(request.SearchTerm))

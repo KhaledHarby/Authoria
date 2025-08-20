@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -15,6 +15,8 @@ import {
   Button,
   Grid,
   Alert,
+  TextField,
+  CircularProgress,
 } from '@mui/material';
 import {
   Language as LanguageIcon,
@@ -22,6 +24,7 @@ import {
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
   Save as SaveIcon,
+  AccessTime as AccessTimeIcon,
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
@@ -34,6 +37,7 @@ import {
 } from './settingsSlice';
 import { useTranslation } from 'react-i18next';
 import Layout from '../../ui/Layout';
+import { tenantSettingsApi, type TokenExpirySetting } from '../../api/tenantSettingsApi';
 
 export default function SettingsPage() {
   const dispatch = useDispatch();
@@ -49,6 +53,43 @@ export default function SettingsPage() {
   } = useSelector((state: RootState) => state.settings);
   
   const [showSuccess, setShowSuccess] = useState(false);
+  const [tokenExpiry, setTokenExpiry] = useState<TokenExpirySetting>({ tokenExpiryMinutes: 50 });
+  const [tokenExpiryLoading, setTokenExpiryLoading] = useState(false);
+  const [tokenExpiryError, setTokenExpiryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTokenExpiry = async () => {
+      try {
+        const setting = await tenantSettingsApi.getTokenExpiry();
+        setTokenExpiry(setting);
+      } catch (error) {
+        console.error('Failed to load token expiry setting:', error);
+      }
+    };
+    loadTokenExpiry();
+  }, []);
+
+  const handleTokenExpiryChange = async () => {
+    if (tokenExpiry.tokenExpiryMinutes <= 0) {
+      setTokenExpiryError('Token expiry must be greater than 0 minutes');
+      return;
+    }
+
+    setTokenExpiryLoading(true);
+    setTokenExpiryError(null);
+    
+    try {
+      const updated = await tenantSettingsApi.setTokenExpiry(tokenExpiry);
+      setTokenExpiry(updated);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      setTokenExpiryError('Failed to update token expiry setting');
+      console.error('Failed to update token expiry:', error);
+    } finally {
+      setTokenExpiryLoading(false);
+    }
+  };
 
   const handleLanguageChange = (languageCode: string) => {
     dispatch(setLanguage(languageCode));
@@ -242,6 +283,51 @@ export default function SettingsPage() {
                 
                 <Button variant="outlined" sx={{ display: 'block' }}>
                   Two-Factor Authentication
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Token Expiry Settings */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <AccessTimeIcon sx={{ mr: 2, color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Token Expiry
+                  </Typography>
+                </Box>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Configure how long authentication tokens remain valid. Default is 50 minutes.
+                </Typography>
+                
+                {tokenExpiryError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {tokenExpiryError}
+                  </Alert>
+                )}
+                
+                <TextField
+                  label="Token Expiry (minutes)"
+                  type="number"
+                  value={tokenExpiry.tokenExpiryMinutes}
+                  onChange={(e) => setTokenExpiry({ tokenExpiryMinutes: parseInt(e.target.value) || 0 })}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                  inputProps={{ min: 1, max: 43200 }} // Max 30 days
+                  helperText="Minimum 1 minute, maximum 43,200 minutes (30 days)"
+                />
+                
+                <Button
+                  variant="outlined"
+                  onClick={handleTokenExpiryChange}
+                  disabled={tokenExpiryLoading}
+                  startIcon={tokenExpiryLoading ? <CircularProgress size={16} /> : <SaveIcon />}
+                  fullWidth
+                >
+                  {tokenExpiryLoading ? 'Updating...' : 'Update Token Expiry'}
                 </Button>
               </CardContent>
             </Card>

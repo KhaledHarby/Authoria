@@ -2,6 +2,7 @@ using Authoria.Application.Abstractions;
 using Authoria.Application.Auth;
 using Authoria.Application.Auth.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Authoria.API.Controllers;
 
@@ -54,6 +55,46 @@ public class AuthController : ControllerBase
 	{
 		var ok = await _auth.ResetPasswordAsync(req);
 		return ok ? NoContent() : BadRequest();
+	}
+
+	[HttpGet("decode-token")]
+	public IActionResult DecodeToken([FromQuery] string? token)
+	{
+		// Check if token is empty or null
+		if (string.IsNullOrWhiteSpace(token))
+		{
+			return BadRequest(new { error = "Token is required", message = "Please provide a valid JWT token in the 'token' query parameter." });
+		}
+
+		try
+		{
+			var handler = new JwtSecurityTokenHandler();
+			var jsonToken = handler.ReadJwtToken(token);
+			
+			// Group claims by type to handle multiple claims with same type
+			var claimsGrouped = jsonToken.Claims
+				.GroupBy(c => c.Type)
+				.ToDictionary(
+					g => g.Key,
+					g => g.Count() == 1 ? g.First().Value : (object)g.Select(c => c.Value).ToArray()
+				);
+			
+			return Ok(new
+			{
+				subject = jsonToken.Subject,
+				issuer = jsonToken.Issuer,
+				audiences = jsonToken.Audiences?.ToArray(),
+				expires = jsonToken.ValidTo,
+				claims = claimsGrouped,
+				applicationIds = jsonToken.Claims.Where(c => c.Type == "aid").Select(c => c.Value).ToArray(),
+				roles = jsonToken.Claims.Where(c => c.Type == "role").Select(c => c.Value).ToArray(),
+				permissions = jsonToken.Claims.Where(c => c.Type == "perm").Select(c => c.Value).ToArray()
+			});
+		}
+		catch (Exception ex)
+		{
+			return BadRequest(new { error = "Invalid token", message = ex.Message });
+		}
 	}
 }
 
