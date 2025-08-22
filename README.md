@@ -110,7 +110,7 @@ Authoria/
 ### Connection Strings
 
 The system uses the following connection string by default:
-- **SQL Server**: `Server=10.24.15.15;Database=Authoria;User ID=accela;Password=accela;Min Pool Size=50;TrustServerCertificate=True;`
+- **SQL Server**: `Server=localhost;Database=db;User ID=user;Password=pass;Min Pool Size=50;TrustServerCertificate=True;`
 
 ### Environment Variables
 
